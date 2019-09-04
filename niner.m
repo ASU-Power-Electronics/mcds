@@ -3,7 +3,7 @@
 % provided.  w0 and wp0 are the waveform and its derivative in time, and t0 is
 % the associated time vector.  The name comes from the original test case, from
 % which nine time points were extracted to sufficiently model the current given
-% a trapezoidal waveform.
+% a trapezoidal waveform with dead time.
 
 function [t, idx] = niner(t0, w0, wp0)
 %     minChange = mean(abs(diff(wp0)));

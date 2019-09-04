@@ -1,7 +1,6 @@
 %% Guidelines
 % Computes litz wire sizing guidelines.
-%TODO: Finish suggesting constructions that meet both skin depth and current
-%density requirements.
+%TODO: Add option to suggest parallel wires for large current densities.
 
 function result = guidelines(P, S, b)
     global J_MAX
@@ -9,22 +8,22 @@ function result = guidelines(P, S, b)
     [~, nwp] = size(P);
     [~, nws] = size(S);
     result = struct();
-    result.P = struct();
-    result.S = struct();
+    result.P = struct(); % results for primary winding(s)
+    result.S = struct(); % results for secondary winding(s)
     
     % Litz wire strand gauges and areas
     awgz = 32:48;
     [~, Az] = AWG2m(awgz);
     
-    % available wire constructions (eBay)
-    constructions = {[19, 50], ...
-                     7900, ...
-                     [16, 27, 41, 65, 105, 165, 265], ...
-                     [5, 10, 15, 16, 20, 25, 30, 32, 40, 45, 50, 60, 64, 66, 70, 80, 90, 100, 128, 140, 160, 180, 200, 220, 250, 280, 320, 350, 400, 420, 450, 540, 600, 640, 660, 700, 800, 900, 1000, 1050, 1300, 1650, 2000, 2500], ...
-                     [17, 27, 42, 66, 100, 105, 108, 170, 270, 435, 700], ...
-                     [16, 26, 40, 66, 105, 165, 270, 420, 660, 1050], ...
-                     [10, 20, 30, 40, 60, 100, 160, 170, 255, 270, 405, 420, 650, 660, 1050], ...
-                     [10, 20, 30, 40, 60, 66, 100, 175, 180, 220, 250, 270, 330, 420, 660, 924, 1162, 1200], ...
+    % available wire constructions (eBay) (note, no 34AWG wire for sale)
+    constructions = {[19, 50]; ...
+                     0; ...
+                     [16, 27, 41, 65, 105, 165, 265]; ...
+                     [5, 10, 15, 16, 20, 25, 30, 32, 40, 45, 50, 60, 64, 66, 70, 80, 90, 100, 128, 140, 160, 180, 200, 220, 250, 280, 320, 350, 400, 420, 450, 540, 600, 640, 660, 700, 800, 900, 1000, 1050, 1300, 1650, 2000, 2500]; ...
+                     [17, 27, 42, 66, 100, 105, 108, 170, 270, 435, 700]; ...
+                     [16, 26, 40, 66, 105, 165, 270, 420, 660, 1050]; ...
+                     [10, 20, 30, 40, 60, 100, 160, 170, 255, 270, 405, 420, 650, 660, 1050]; ...
+                     [10, 20, 30, 40, 60, 66, 100, 175, 180, 220, 250, 270, 330, 420, 660, 924, 1162, 1200]; ...
                      [180, 300, 420, 675, 1100]};
     
     % table from Sullivan (2014)
@@ -50,6 +49,9 @@ function result = guidelines(P, S, b)
             result.P(p).ndMax = ceil(k(idx).*delta^2*b/N); % associated number of strands
             result.P(p).Db = sqrt(result.P(p).ndMax).*result.P(p).dMax/0.68125; % bundle outer diameters (corrected for litz)
             result.P(p).nbpl = floor(b*1e-3/result.P(p).Db); % associated bundles per layer (to fit in bobbin breadth)
+            cons = constructions{idx} - result.P(p).ndMax; % purchasable constructions for AWG
+            idx2 = find(cons >= 0, 1); % identify all number of strands greater than or equal to
+            result.P(p).sugStr = [num2str(cons(idx2) + result.P(p).ndMax), '/', num2str(awgz(idx))]; % formatted string for suggestion
         end
     else
         N = P.N;
@@ -69,6 +71,9 @@ function result = guidelines(P, S, b)
         result.P.ndMax = ceil(k(idx).*delta^2*b/N);
         result.P.Db = sqrt(result.P.ndMax).*result.P.dMax/0.68125;
         result.P.nbpl = floor(b*1e-3/result.P.Db);
+        cons = constructions{idx} - result.P.ndMax;
+        idx2 = find(cons >= 0, 1);
+        result.P.sugStr = [num2str(cons(idx2) + result.P.ndMax), '/', num2str(awgz(idx))];
     end
     
     if nws > 1
@@ -90,6 +95,9 @@ function result = guidelines(P, S, b)
             result.S(s).ndMax = ceil(k(idx).*delta^2*b/N);
             result.S(s).Db = sqrt(result.S(s).ndMax).*result.S(s).dMax/0.68125;
             result.S(s).nbpl = floor(b*1e-3/result.S(s).Db);
+            cons = constructions{idx} - result.S(s).ndMax;
+            idx2 = find(cons >= 0, 1);
+            result.S(s).sugStr = [num2str(cons(idx2) + result.S(s).ndMax), '/', num2str(awgz(idx))];
         end
     else
         N = S.N;
@@ -108,5 +116,8 @@ function result = guidelines(P, S, b)
         result.S.ndMax = ceil(k(idx).*delta^2*b/N);
         result.S.Db = sqrt(result.S.ndMax).*result.S.dMax/0.68125;
         result.S.nbpl = floor(b*1e-3/result.S.Db);
+        cons = constructions{idx} - result.S.ndMax;
+        idx2 = find(cons >= 0, 1);
+        result.S.sugStr = [num2str(cons(idx2) + result.S.ndMax), '/', num2str(awgz(idx))];
     end
 end

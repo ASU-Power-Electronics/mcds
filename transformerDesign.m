@@ -1,6 +1,6 @@
 %% Transformer Design Script
 % *R. Scott Mongrain*
-% - _June 2016-May 2019_
+% - _June 2016-September 2019_
 %
 % This program is a tool for use in designing power electronics magnetic
 % components (specifically transformers and inductors of various descriptions).
@@ -57,6 +57,7 @@ format compact
 
 tol = eps*1e5; % ~2e-11 for 2-digit convergence at nano-scale
 
+% https://www.mathworks.com/matlabcentral/fileexchange/37302-struve-functions
 addpath('Struve01') % for inductance calculations
 
 %% Constants and Structures Initializations
@@ -106,12 +107,9 @@ Transformer = struct('core', struct,...
 % 
 % * $V_{in, min}$:  minimum converter input voltage in [V]
 % * $V_{in, max}$:  maximum converter input voltage in [V]
-% * $V_{in}$: nominal converter input voltage in [V]
 % * $V_o$:  nominal converter output voltage in [V]
 % * $P_o$:  nominal converter output power in [W]
-% * $V_f$:  converter diode forward voltage in [V]
 % * $f_s$:  converter switching frequency in [Hz]
-% * $D_{max}$:  maximum converter duty ratio (strict inequality)
 
 button = questdlg('Create new converter or use existing?', ...
                   'Converter Selection', ...
@@ -246,7 +244,8 @@ clear FileName PathName ptemp stemp tVec this getString
 % *Core Base Parameters*
 %
 % NOTE:  Material selection is almost exclusively frequency-based for a given
-% application, so we can proceed immediately and without regret.
+% application.  Saturation flux density and inductance per turn are malleable,
+% since they depend on shape, so we can proceed immediately and without regret.
 
 Transformer.core.material = coreMaterial(Converter.f_s);
 Transformer.core.name = 'None';
@@ -292,16 +291,7 @@ thisP = Transformer.properties;
 %
 % * $n$:  transformer turns ratio
 % * $I_o$:  nominal converter output current in [A]
-% * $V_{in}$:  nominal converter input voltage in [V]
 % * $T_s$:  converter switching period in [s]
-% * $D_{min}$:  minimum converter duty ratio
-% * $D$:  converter duty ratio
-
-%TODO: move to converter selection as type drop-down and add other isolated
-%converter types (or remove entirely...)
-
-% Asymmetric Half-Bridge (comments include symmetric HB)
-% thisC.V_f = 1.4; % diode forward voltage drop (cut-in model)
 
 if numel([thisW.secondary(:).N]) > 1
     thisC.n = thisW.secondary(1).N/thisW.primary.N;
@@ -310,14 +300,7 @@ else
 end
 
 thisC.I_o = thisC.P_o/thisC.V_o;
-% thisC.V_in = (thisC.V_inMin + thisC.V_inMax)/2;
-% thisC.V_in = 34.6;
 thisC.T_s = 1/thisC.f_s;
-% thisC.D_min = 1/2 - sqrt(1/4 - (thisC.V_o + thisC.V_f)/(2*thisC.n*thisC.V_inMax));
-% thisC.D = 1/2 - sqrt(1/4 - (thisC.V_o + thisC.V_f)/(2*thisC.n*thisC.V_in));
-% thisC.D_min = (thisC.V_o + thisC.V_f)/(thisC.n*thisC.V_inMax); % symmetric
-% thisC.D = thisC.V_o/(thisC.n*thisC.V_in); % symmetric
-% thisC.D = 0.321;                                                                 % MANUAL EDIT
 
 %%
 % *Winding Calculated Parameters*
@@ -327,13 +310,16 @@ thisC.T_s = 1/thisC.f_s;
 % calculated by extracting any non-zero mean (the DC component), and shifting
 % the AC waveform to compute I_RMS = sqrt(I_DC^2 + I_ACRMS^2).  The derivative
 % of the current is approximated by a finite difference and its RMS value is
-% computed using MATLAB's built-in rms() function.
+% computed using MATLAB's built-in rms() function.  The RMS value of the voltage
+% is computed in the same way.
 % 
 % * $P_p$:  primary VA rating in [W]
 % * $P_s$:  secondary VA rating in [W]
 % * $P_t$:  total winding apparent power in [W]
 % * $I_{p, RMS}$:  primary root-mean-square current in [A]
 % * $I_{s, RMS}$:  secondary root-mean-square current in [A]
+% * $V_{p, RMS}$:  primary root-mean-square voltage in [V]
+% * $V_{s, RMS}$:  secondary root-mean-square voltage in [V]
 
 nwp = thisP.N_wp;
 nws = thisP.N_ws;
@@ -395,7 +381,7 @@ Transformer.winding = orderfields(thisW);
 clear thisC thisR thisW thisP nwp nws iwf vwf temp
 
 %% Design Process
-% A separate PDF will detail the design process.
+% The main transformer design process begins here.
 
 %%
 % *Required Geometry Coefficient*
@@ -425,7 +411,6 @@ else
     symmetric = false;
 end
 
-% this.K_f = 2*sqrt(2/Converter.D); % Half-bridge specific
 this.K_f = waveformFactor(vwf, Time.t, symmetric);
 this.K_e = 0.5*SIGMA_CU*this.K_f^2*Converter.f_s^2*this.B_pk^2;
 this.K_g = this.P_t/(2*this.alpha*this.K_e)*100; % returned to 100%
@@ -442,7 +427,7 @@ clear this vwf iwf nwp symmetric
 % selected from "Core families":
 % 
 % * Minimum throughput power:  P_t
-% * Maximum throughput power:  sqrt(2)*P_t <-- *Half-bridge*
+% * Maximum throughput power:  2*P_t (safety first)
 % * Converter operating frequency:  f_s
 % * Converter type:  *Half-Bridge* ~~ Push-Pull (read manual if uncertain)
 % * Copper fill factor:  0.3 (0.5 is too optimistic)
@@ -462,7 +447,7 @@ temp = min([thisT.core.material.main.T_c - 25, 115]);
 Kg = thisT.properties.K_g*1e15;  % from m^5 to mm^5 for display
 fprintf('\nSFDT Input Values:\n')
 fprintf('Minimum throughput power:  %g W\n', thisT.properties.P_t)
-fprintf('Maximum throughput power:  %g W\n', sqrt(2)*thisT.properties.P_t)
+fprintf('Maximum throughput power:  %g W\n', 2*thisT.properties.P_t)
 fprintf('Converter operating frequency:  %g kHz\n', thisC.f_s*1e-3)
 fprintf('Ambient temperature:  25 degrees C\n')
 fprintf('Allowed temperature rise:  %g degrees C\n', temp)
@@ -648,7 +633,7 @@ else
 end
 
 % compute wire size guidelines and report
-%TODO: Fix this to actually suggest something based on current density.
+%TODO: Need to include possibility for parallel wires for large J_pk.
 b = Transformer.core.bobbin.breadth*1e3; % to [mm]
 GLstruct = guidelines(thisP, thisS, b);
 
@@ -660,6 +645,7 @@ if nwp > 1
         fprintf('Safety limit for conductor bundle equivalent AWG:  %d\n', GLstruct.P(idx).minbAWG)
         fprintf('Suggested strand size AWG:  %d\n', GLstruct.P(idx).minAWG)
         fprintf('Associated number of strands:  %d\n', GLstruct.P(idx).ndMax)
+        fprintf('Purchasable option:  %s\n', GLstruct.P(idx).sugStr)
         fprintf('Resulting outer diameter:  %f mm\n', GLstruct.P(idx).Db*1e3)
         fprintf('Fits %d conductor bundles per layer.\n\n', GLstruct.P(idx).nbpl)
     end
@@ -668,6 +654,7 @@ else
     fprintf('Safety limit for conductor bundle equivalent AWG:  %d\n', GLstruct.P.minbAWG)
     fprintf('Suggested strand size AWG:  %d\n', GLstruct.P.minAWG)
     fprintf('Associated number of strands:  %d\n', GLstruct.P.ndMax)
+    fprintf('Purchasable option:  %s\n', GLstruct.P.sugStr)
     fprintf('Resulting outer diameter:  %f mm\n', GLstruct.P.Db*1e3)
     fprintf('Fits %d conductor bundles per layer.\n\n', GLstruct.P.nbpl)
 end
@@ -678,6 +665,7 @@ if nws > 1
         fprintf('Safety limit for conductor bundle equivalent AWG:  %d\n', GLstruct.S(idx).minbAWG)
         fprintf('Suggested strand size AWG:  %d\n', GLstruct.S(idx).minAWG)
         fprintf('Associated number of strands:  %d\n', GLstruct.S(idx).ndMax)
+        fprintf('Purchasable option:  %s\n', GLstruct.S(idx).sugStr)
         fprintf('Resulting outer diameter:  %f mm\n', GLstruct.S(idx).Db*1e3)
         fprintf('Fits %d conductor bundles per layer.\n\n', GLstruct.S(idx).nbpl)
     end
@@ -686,6 +674,7 @@ else
     fprintf('Safety limit for conductor bundle equivalent AWG:  %d\n', GLstruct.S.minbAWG)
     fprintf('Suggested strand size AWG:  %d\n', GLstruct.S.minAWG)
     fprintf('Associated number of strands:  %d\n', GLstruct.S.ndMax)
+    fprintf('Purchasable option:  %s\n', GLstruct.S.sugStr)
     fprintf('Resulting outer diameter:  %f mm\n', GLstruct.S.Db*1e3)
     fprintf('Fits %d conductor bundles per layer.\n\n', GLstruct.S.nbpl)
 end
@@ -702,7 +691,7 @@ clear thisP thisS GLstruct nwp nws b
 % derivative of the supplied waveform).  The waveform with the largest number of
 % changes will determine the size of all.  This greatly facilitates entry of the
 % data points into LitzOpt, which requires each duration and current value to be
-% entered manually.  This will later be adjusted such that the file and
+% entered manually.  This can ostensibly be adjusted such that the file and
 % structure system common to this program are usable with LitzOpt directly.  An
 % added effect will be that waveforms of more than a handful of points can be
 % used as they will be automatically entered.
@@ -825,7 +814,7 @@ clear thisP thisS time tkeep idxkeep idx tableNames currentTempTable I vectorLen
 
 %TODO: implement call to LitzOpt
 %TODO: in the interim read from file instead of manual entry in web version
-% for now, enter results here:
+% for now, enter results in the provided input dialog:
 
 Transformer.winding = constructWinding(Transformer);
 
@@ -834,6 +823,7 @@ Transformer.winding = constructWinding(Transformer);
 % Now that the transformer is completely designed, we can evaluate its
 % magnetizing inductance, mutual inductance between windings, and the leakage
 % inductance in each winding.
+%TODO: include tolerance in calculateInductance.
 
 thisW = Transformer.winding;
 thisP = Transformer.properties;
@@ -911,7 +901,7 @@ clear thisW thisP tempWindings count nwp nws I N
 % recalculated for a full view of the current transformer.  This allows for the
 % refinement of many of the assumed values at the start and continued refinement
 % of said values on subsequent iterations.  It also allows for the calculation
-% of loss values for comparison.  Future work in this section will provide
+% of loss values for comparison.  Future work in this section could provide
 % options for continued iteration, but for now manual iteration is necessary in
 % order to proceed with the transformer design.
 
@@ -962,6 +952,8 @@ clear thisC thisW thisP
 %
 %TODO: add optimization routine
 %TODO: add state space model calculation
+%TODO: add support for different types of windings and also calculate porosity
+%      in windingResistance
 
 thisC = Converter;
 thisR = Transformer.core;
@@ -978,7 +970,7 @@ thisP.K_u = thisW.A_Cu/thisR.W_a;
 [thisW, thisP.P_Cu] = windingResistance(thisW);
 
 % calculate i_m, magnetizing flux, B(t), and B_pk in core
-% Note: if there is no magnetizing branch, i_m will be zero
+% Note: if there is no magnetizing branch in the model, i_m will be zero
 % Also: current is defined positive out of the secondary winding dotted terminal
 thisW.i_m = zeros(size(Time.t));
 thisR.MMF = zeros(size(Time.t));
@@ -1139,6 +1131,7 @@ clear thisC thisR thisP thisW alpha beta k freqs vLmPri vLmSec vLl vr nwp nws id
 %% Program Cleanup
 % Here we can save the current transformer to file for future iteration or ease
 % of access.  We can also clear any junk left over from the program run.
+%TODO: select directory instead of saving in WD.
 answer = questdlg('Save results?', 'Save or Discard', 'Yes', 'No', 'Yes');
 
 if isequal(answer, 'Yes')

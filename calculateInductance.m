@@ -1,6 +1,7 @@
 %% calculateInductance
 % Calculates inductance of set of windings on the same magnetic core.  Uses
-% Hurley's formulation (1994) of summation of images.  Accurate to ~10%.*
+% Hurley's formulation (1994) of summation of images.  Accurate to ~10%* prior
+% to inclusion of gamma terms; now accurate to arbitrary tolerance.
 %
 % *results below are pre-inclusion of gamma terms
 % airTest = [25, 25, sqrt(15e-3*25e-3), sqrt(15e-3*25e-3), 250e-3, getGMD(10e-3, 10e-3)];
@@ -9,6 +10,8 @@
 % gives 86.3393e-6, 40.4391e-6 (85e-6, 34e-6)
 % for a total of 158.5894e-6 (144e-6)
 % which is a 10.13% overestimate
+%TODO: include tolerance set at beginning of design script for airInductance and
+%      coreInductance.
 
 function [M, Ml] = calculateInductance(Windings, Core, N_w, f_s)
     global MU_0
