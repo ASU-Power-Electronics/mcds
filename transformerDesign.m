@@ -986,13 +986,13 @@ if nwp > 1
         thisW.i_m = thisW.i_m + I;
         vLl = thisW.primary(idx).waveform.di_pdt*thisW.primary(idx).Ll;
         vr = thisW.primary(idx).R*I;
-        vLmPri = vLmPri + thisW.primary(Idx).waveform.v_p - vLl - vr;
+        vLmPri = vLmPri + (thisW.primary(Idx).waveform.v_p - vLl - vr)/thisW.primary(idx).N;
     end
 else
     thisW.i_m = thisW.i_m + thisW.primary.waveform.i_p;
     vLl = thisW.primary.waveform.di_pdt*thisW.primary.Ll;
     vr = thisW.primary.R*thisW.primary.waveform.i_p;
-    vLmPri = vLmPri + thisW.primary.waveform.v_p - vLl - vr;
+    vLmPri = vLmPri + (thisW.primary.waveform.v_p - vLl - vr)/thisW.primary.N;
 end
 
 if nws > 1
