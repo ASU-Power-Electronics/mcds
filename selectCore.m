@@ -7,8 +7,6 @@
 % rectangular cores in both x and y directions, for 4 segments equalling one
 % full turn passing through the center of the window.
 
-%TODO: change from warning to message box
-
 function Core = selectCore(Core, Properties)
     material = Core.material; % placeholder
     matName = material.main.material;
@@ -87,9 +85,18 @@ function Core = selectCore(Core, Properties)
                 	Core = CoresShort(Selection - 1);
                     
                     if Core.K_g < KgMin
-                        warning("Core does not meet minimum core geometry coefficient, choose a larger core.")
-                        ok = 0;
-                        continue
+                        resp = questdlg('Core does not meet minimum core geometry coefficient, choose a larger core?', 'Core Geometry Coefficient Warning');
+                        
+                        if strcmp(resp, 'Yes')
+                            ok = 0;
+                            continue
+                        elseif strcmp(resp, 'No')
+                            ok = 1;
+                        else
+                            warning("Core does not meet minimum core geometry coefficient, choose a larger core.")
+                            ok = 0;
+                            break
+                        end
                     else
                         ok = 1;
                     end
@@ -97,7 +104,6 @@ function Core = selectCore(Core, Properties)
                     Core.opts = CoresShort([1:Selection - 2, Selection:end]);
                     Core.material = material;
                 elseif ok && isequal(Selection, 1)
-                    coreSaver = struct();
                     coreData = inputdlg({'Core designation (ex. ER32_6_25)', ...
                                          'Center leg type (round, rectangular)', ...
                                          'Effective volume [mm^3]', ...
@@ -147,9 +153,18 @@ function Core = selectCore(Core, Properties)
                     Core.K_g = Core.A_p*Core.A_e*0.3/Core.MLT; % K_u = 0.3
                     
                     if Core.K_g < KgMin
-                        warning("Core does not meet minimum core geometry coefficient, choose a larger core.")
-                        ok = 0;
-                        continue
+                        resp = questdlg('Core does not meet minimum core geometry coefficient, choose a larger core?', 'Core Geometry Coefficient Warning');
+                        
+                        if strcmp(resp, 'Yes')
+                            ok = 0;
+                            continue
+                        elseif strcmp(resp, 'No')
+                            ok = 1;
+                        else
+                            warning("Core does not meet minimum core geometry coefficient, choose a larger core.")
+                            ok = 0;
+                            break
+                        end
                     else
                         ok = 1;
                     end
@@ -169,6 +184,18 @@ function Core = selectCore(Core, Properties)
                         save('Cores.mat', 'Cores')
                     end
                 end
+            end
+            
+            % Offer to start over if cancelled, return results as nested call
+            % Otherwise crash (aka "exit")
+            if isequal(ok, 0)
+                resp = questdlg('Select New Core or Exit?', ...
+                                'Continue or Exit', ...
+                                'New Core', 'Exit', 'New Core');
+                            
+                if strcmp(resp, 'New Core')
+                    Core = selectCore(Core, Properties);
+                end                    
             end
     end
     
