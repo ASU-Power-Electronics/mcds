@@ -117,7 +117,7 @@ function material = coreMaterial(f)
                         Materials(numMats + 1) = material.main;
                         save('Materials.mat', 'Materials')
                     elseif ~isequal(ok, 0) % selection made
-                        material.opts = Materials(Selection);
+                        material.opts = Materials(Selection - 1);
                         material.main = material.opts;
                         answer = {1};
                     else % canceled manual input

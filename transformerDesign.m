@@ -1071,8 +1071,14 @@ end
 % calculate core losses (coreloss.m will do this with iGSE given a B waveform)
 % there is an error in the file that produces mW/m^3 instead of a reasonable
 % value; adjustment has been made in the form of a constant factor 1e-3.
+% Further amendments have been made to update the script to modern best
+% practices in programming, specifically in MATLAB. Vectorization has replaced
+% loops and counters, all variables have been named for self-documentation, and
+% the speed has improved immensely.  The PWL approximation to k_i has also been
+% replaced by the full numerical integration explained in the paper.  This
+% version is included as 'corelossEdit.m'.
 % call coreloss.m and suppress console output in favor of our formatting
-thisR.P_V = coreloss(Time.t, thisR.B, alpha, beta, k, 1)*1e-3; % [W/m^3]
+thisR.P_V = corelossEdit(Time.t, thisR.B, alpha, beta, k, 1)*1e-3; % [W/m^3]
 thisP.P_Fe = thisR.P_V*thisR.V_e;
 thisP.P = thisP.P_Fe + thisP.P_Cu;
 thisP.eta = (thisC.P_o - thisP.P)/thisC.P_o;
