@@ -689,12 +689,8 @@ clear thisP thisS GLstruct nwp nws b
 % In this section the time vector is reduced greatly in length to capture only
 % the large changes (for which we use 'niner.m', a script that checks the second
 % derivative of the supplied waveform).  The waveform with the largest number of
-% changes will determine the size of all.  This greatly facilitates entry of the
-% data points into LitzOpt, which requires each duration and current value to be
-% entered manually.  This can ostensibly be adjusted such that the file and
-% structure system common to this program are usable with LitzOpt directly.  An
-% added effect will be that waveforms of more than a handful of points can be
-% used as they will be automatically entered.
+% changes will determine the size of all.  This is the result of setting up for
+% manual entry, but now exists only because "it's always been that way".
 
 thisP = Transformer.winding.primary;
 thisS = Transformer.winding.secondary;
@@ -777,17 +773,10 @@ clear thisP thisS time tkeep idxkeep idx tableNames currentTempTable I vectorLen
 
 %%
 % *LitzOpt Optimization*
-% (aka future site of litzOpt call and return)
 % 
-% Follow the instructions in the web-based tool for now.  On the first pass,
-% select "2-D Internal Field Sim", "Assume Layered Windings", enter the number
-% of windings (for the selected example, 3), and choose "Piecewise linear" for
-% the "Current Waveform Specification Mode".  Enter the number of time steps in
-% the text field and click "Go!".  All information required has been presented,
-% and no unit conversions are necessary; the values are converted before
-% display.  When the values provided have been entered, click "Go!" at the
-% bottom without changing any other values.  This returns a table from which we
-% can obtain the following values:
+% Save the file, then choose 'Existing Project' and load it again.  This calls
+% 'litzoptEdit.m' and returns a table and several plots from which we can obtain
+% the following values:
 % 
 % * $AWG_{s, pn}$:  nth primary winding strand AWG
 % * $AWG_{s, sn}$:  nth secondary winding strand AWG
@@ -812,8 +801,9 @@ clear thisP thisS time tkeep idxkeep idx tableNames currentTempTable I vectorLen
 % outer diameter.  The secondary windings are dependent on number of turns and
 % outer diameter of both windings for their position information.
 
-%TODO: implement call to LitzOpt
-%TODO: in the interim read from file instead of manual entry in web version
+Transformer = litzOptWrapper(Transformer, Time);
+
+%TODO: allow user to select one of the options
 % for now, enter results in the provided input dialog:
 
 Transformer.winding = constructWinding(Transformer);

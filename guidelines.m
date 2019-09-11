@@ -1,6 +1,7 @@
 %% Guidelines
 % Computes litz wire sizing guidelines.
 %TODO: Add option to suggest parallel wires for large current densities.
+%TODO: Fix strange calculation results.
 
 function result = guidelines(P, S, b)
     global J_MAX
