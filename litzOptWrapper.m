@@ -59,7 +59,7 @@ function T = litzOptWrapper(T, Time)
                 lenstr = [lenstr, ...
                           num2str(2*pi*(rLegC + hBase + heightVal/2), '%g'), ...
                           ', '];
-                Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.primary(p).waveform.i_p9(1:end -1)), endstr];
+                Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.primary(p).waveform.i_p9(1:end - 1)), endstr];
                 
                 hBase = hBase + heightVal;
                 w = w + 1;
@@ -73,7 +73,7 @@ function T = litzOptWrapper(T, Time)
             lenstr = [lenstr, ...
                       num2str(2*pi*(rLegC + hBase + heightVal/2), '%g'), ...
                       ', '];
-            Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.primary.waveform.i_p9(1:end -1)), endstr];
+            Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.primary.waveform.i_p9(1:end - 1)), endstr];
             
             hBase = hBase + heightVal;
             w = w + 1;
@@ -88,7 +88,7 @@ function T = litzOptWrapper(T, Time)
                 cystr = [cystr, num2str(bbt + breadthVal/2, '%g')];
                 lenstr = [lenstr, ...
                           num2str(2*pi*(rLegC + hBase + heightVal/2), '%g')];
-                Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.secondary(s).waveform.i_s9(1:end -1)), endstr];
+                Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.secondary(s).waveform.i_s9(1:end - 1)), endstr];
                 
                 if w < nw
                     Nstr = [Nstr, ', '];
@@ -118,13 +118,13 @@ function T = litzOptWrapper(T, Time)
             lenstr = [lenstr, ...
                       num2str(2*pi*(rLegC + hBase + heightVal/2), '%g'), ...
                       endstr];
-            Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.secondary.waveform.i_s9(1:end -1)), endstr];
+            Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.secondary.waveform.i_s9(1:end - 1)), endstr];
         end
         
         [fileName, pathName] = uiputfile([T.core.name, '.m']);
         fid = fopen(fullfile(pathName, fileName), 'w');
         fprintf(fid, 'rhoc = %g;\n', RHO_CU);
-        fprintf(fid, 'awg = [32:2:48];\n');
+        fprintf(fid, 'awg = 32:2:48;\n');
         fprintf(fid, 'Ximage = 5;\n');
         fprintf(fid, 'Yimage = 5;\n');
         fprintf(fid, 'xdiv = 20;\n');

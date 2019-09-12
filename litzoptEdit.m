@@ -1318,19 +1318,24 @@ plotdesignsL(tot_orig_cost, tot_orig_loss, bbdesignlabels, optdesignlabels, dia,
 
 %plot winding window cross section
 if versionID ~= 'o' 
-    XsectionplotL(xzero, yzero, a, b, h, bw, hb);
+    XsectionplotL(xzero, yzero, a, b, h, bw, hb, bb);
 end
-%displays the optimal design table
+
+% R. Scott Mongrain - Added a bit of separation and a header to play nice.
+fprintf('\nLitzOpt Optimization Report\n')
+
+% displays the optimal design table
 htmltable = optdestable(optdesignlabels, totcost, totloss, numwind, n, dia, fp);
 disp(htmltable);
 
-%displays the buildable design table
+% displays the buildable design table
 bdtable = buildabletable(bbdesignlabels, totcost2round, totloss2round, numwind,n2round,awground);
 disp(bdtable);
 
-%displays original designs cost and loss if an original design was entered
+% displays original designs cost and loss if an original design was entered
+% R. Scott Mongrain - added a bit of separation to play nice.
 if tot_orig_cost ~= 0
-    title = 'Original Design';
+    title = '\nOriginal Design';
     coststr = ['Relative Cost of Original Design = ' num2str(tot_orig_cost) ''];
     lossstr = ['Loss of Original Design (in Watts) = ' num2str(tot_orig_loss) ''];
     disp(title);
@@ -1723,7 +1728,8 @@ gapraise=bw/2;
 % gaps for field calc
  
 function [int_B2]=foreachexcitation(a,b,gaplen,gapmult, xzero,yzero,bw,h,agap,bgap,xzerogap, yzerogap, xdiv,ydiv,excwind,numwindplusgap,Ximage,Yimage)      %#ok<*INUSL>
-disp(['Now computing field for the following pattern of excitation: ' num2str(excwind')])
+% R. Scott Mongrain - This feels more like a debug comment.
+% disp(['Now computing field for the following pattern of excitation: ' num2str(excwind')])
 numwind=length(a);
 
 numexc = sum(excwind);
@@ -2076,7 +2082,8 @@ for i = 1:numtime
     Ims = Ims + ((I(:,i+1)-I(:,i)).^2./3 + (I(:,i)+I(:,i+1)).^2)./4./sum(dt).*dt(i);
 end 
 
-Irms = sqrt(Ims) %#ok<NOPRT> % Irms is obtained from the square root of the means square current
+% R. Scott Mongrain - Already computing RMS elsewhere, commenting display.
+Irms = sqrt(Ims); %#ok<NOPRT> % Irms is obtained from the square root of the means square current
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%end Imscurrent%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -2554,14 +2561,15 @@ hold off
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%end plotdesignsL%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%start Xsectionplot%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function f3 = XsectionplotL(xzero, yzero, a, b, h, bw,hb)
+function f3 = XsectionplotL(xzero, yzero, a, b, h, bw, hb, bb)
 
 % updated by JDP 6/24/03 to fill rectangles and label better
 % this function returns a plot of the winding window
-% here are the definitions of h,bw,hb,a,b,xzero and yzero for reference
+% here are the definitions of h,bw,hb,bb,a,b,xzero and yzero for reference
 % h - height of core window
 % bw - breadth of winding window
 % hb - height of bobbin window
+% bb - breadth of bobbin window
 % a - Height of Winding Cross Section for each winding (in h direction)
 % b - Width of Winding Cross Section for each winding (in bw direction)
 % xzero - Location of Center of Winding Cross Section for each winding (in h direction)
@@ -2608,7 +2616,11 @@ end
       fill(fillx, filly, xtotal(winding,:))
       hold on
   end
-  rectangle('position',[0,0,(bw.*1000),(hb.*1000)],'linewidth',2)
+  % R. Scott Mongrain - corrected improper window position (which has tormented
+  % me for years), and added bobbin window as well.
+  rectangle('Position', [0, 0, bw*1e3, h*1e3], 'LineWidth', 2)
+  rectangle('Position', [(bw - bb)*1e3/2, (h - hb)*1e3, bb*1e3, hb*1e3], ...
+            'Linewidth', 1.5, 'EdgeColor', ones(1, 3)/sqrt(2))
  hold off
   
  hold on
@@ -3184,22 +3196,22 @@ function htmltable = optdestable(optdesignlabels, totcost, totloss, numwind, n, 
 % totloss - the total loss of the optimal designs
 % optdesignlabels - the labels for the optimal design
 
-title = {'Optimal Design Table'};
-disp(title)
+% R. Scott Mongrain - removed cell array on title so that quotes don't show.
+fprintf('\nOptimal Design Table:\n')
 
 totcost = smartround(totcost, 3);
 totloss = smartround(totloss, 3);
 totcost = totcost';
 totloss = totloss';
 
-gaugeheading = {'Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge'; ' (W1)', ' (W2)',' (W3)',' (W4)',' (W5)',' (W6)', ' (W7)',' (W8)',' (W9)',' (W10)'};
-gaugeheading = gaugeheading(:, 1:numwind);
-heading = {'Relative','Loss','NumStrands',' NumStrands','NumStrands','NumStrands','NumStrands','NumStrands',' NumStrands','NumStrands','NumStrands','NumStrands'; 'Cost', 'in Watts', ' (W1)', ' (W2)',' (W3)',' (W4)',' (W5)',' (W6)', ' (W7)',' (W8)',' (W9)',' (W10)'};
-heading = heading(:, 1:(2+numwind));
-heading2 = {'Packing','Packing','Packing','Packing','Packing','Packing','Packing','Packing','Packing','Packing'; 'Factor (W1)','Factor (W2)','Factor (W3)','Factor (W4)','Factor (W5)','Factor (W6)','Factor (W7)','Factor (W8)','Factor (W9)','Factor (W10)'};
-heading2 = heading2(:, 1:numwind);
-
-heading = cat(2,gaugeheading, heading);
+% gaugeheading = {'Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge'; ' (W1)', ' (W2)',' (W3)',' (W4)',' (W5)',' (W6)', ' (W7)',' (W8)',' (W9)',' (W10)'};
+% gaugeheading = gaugeheading(:, 1:numwind);
+% heading = {'Relative','Loss','NumStrands',' NumStrands','NumStrands','NumStrands','NumStrands','NumStrands',' NumStrands','NumStrands','NumStrands','NumStrands'; 'Cost', 'in Watts', ' (W1)', ' (W2)',' (W3)',' (W4)',' (W5)',' (W6)', ' (W7)',' (W8)',' (W9)',' (W10)'};
+% heading = heading(:, 1:(2+numwind));
+% heading2 = {'Packing','Packing','Packing','Packing','Packing','Packing','Packing','Packing','Packing','Packing'; 'Factor (W1)','Factor (W2)','Factor (W3)','Factor (W4)','Factor (W5)','Factor (W6)','Factor (W7)','Factor (W8)','Factor (W9)','Factor (W10)'};
+% heading2 = heading2(:, 1:numwind);
+% 
+% heading = cat(2,gaugeheading, heading);
 %heading = cat(2,heading, heading2);
 
 n = smartround(n,3);
@@ -3208,12 +3220,16 @@ n = n';
 dia = dia';
 fp = fp';
 
-htmltable = [dia totcost totloss n];
-htmltable = num2cell(htmltable);
+% R. Scott Mongrain - Building table class instead of cell array.
+varNames = {'Gauge', 'NumStrands', 'RelCost', 'LossInW'};
+htmltable = table(dia, n, totcost, totloss, 'VariableNames', varNames);
+
+% htmltable = [dia totcost totloss n];
+% htmltable = num2cell(htmltable);
 %optdesignlabels = cellstr(optdesignlabels);
 %htmltable = [optdesignlabels, htmltable];
 
-htmltable = [heading; htmltable];
+% htmltable = [heading; htmltable];
 s.htmltable = htmltable; %#ok<*STRNU>
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%end optdesigntable%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3229,28 +3245,34 @@ function bdtable = buildabletable(bbdesignlabels, totcost2round, totloss2round, 
 % totloss2round - the total loss of the buildable designs
 % bbdesignlabels - the labels for the buildable designs
 
+% R. Scott Mongrain - removed cell array on title so that quotes don't show.
 %create heading for the table
-bdtitle = {'Buildable Design Table'};
-disp(bdtitle)
+fprintf('\nBuildable Design Table:\n')
+
 bdcost = totcost2round;
 bdcost = smartround(bdcost,3);
 bdcost = bdcost';
-gaugeheading = {'Design','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge'; 'Number','(W1)', '(W2)','(W3)','(W4)','(W5)','(W6)', '(W7)','(W8)','(W9)','(W10)'};
-gaugeheading = gaugeheading(:, 1:1+numwind);
-bdheading = {'Relative','Loss','NumStrands',' NumStrands','NumStrands','NumStrands','NumStrands','NumStrands',' NumStrands','NumStrands','NumStrands','NumStrands'; 'Cost', 'in Watts', '(W1)', '(W2)','(W3)','(W4)','(W5)','(W6)', '(W7)','(W8)','(W9)','(W10)'};
-bdheading = bdheading(:, 1:(2+numwind));
-bdheading = cat(2,gaugeheading,bdheading);
+% gaugeheading = {'Design','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge','Gauge'; 'Number','(W1)', '(W2)','(W3)','(W4)','(W5)','(W6)', '(W7)','(W8)','(W9)','(W10)'};
+% gaugeheading = gaugeheading(:, 1:1+numwind);
+% bdheading = {'Relative','Loss','NumStrands',' NumStrands','NumStrands','NumStrands','NumStrands','NumStrands',' NumStrands','NumStrands','NumStrands','NumStrands'; 'Cost', 'in Watts', '(W1)', '(W2)','(W3)','(W4)','(W5)','(W6)', '(W7)','(W8)','(W9)','(W10)'};
+% bdheading = bdheading(:, 1:(2+numwind));
+% bdheading = cat(2,gaugeheading,bdheading);
 
-%get data in porper format for the table
+%get data in proper format for the table
 n2round = n2round';
 [totloss2round] = smartround(totloss2round, 5);
 totloss2round =  totloss2round';
 awground = awground';
-bdtable = [awground bdcost totloss2round n2round];
-bdtable = num2cell(bdtable);
+% bdtable = [awground bdcost totloss2round n2round];
+% bdtable = num2cell(bdtable);
 bbdesignlabels = cellstr(bbdesignlabels);
-bdtable = [bbdesignlabels, bdtable];
-bdtable = [bdheading; bdtable];
+% bdtable = [bbdesignlabels, bdtable];
+% bdtable = [bdheading; bdtable];
+
+% R. Scott Mongrain - Building table class instead of cell array.
+varNames = {'Design', 'Gauge', 'NumStrands', 'RelCost', 'LossInW'};
+bdtable = table(bbdesignlabels, awground, n2round, bdcost, totloss2round, 'VariableNames', varNames);
+
 s.bdtable = bdtable;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%end buildabletable%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
