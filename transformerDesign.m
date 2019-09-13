@@ -686,7 +686,7 @@ uiwait(msgbox('Click OK to continue to LitzOpt.', 'LitzOpt', 'modal'))
 Transformer.winding.primary = orderfields(thisP);
 Transformer.winding.secondary = orderfields(thisS);
 
-clear thisP thisS GLstruct nwp nws b h T
+clear thisP thisS GLstruct nwp nws b h Tp Ts
 
 %%
 % *Preparation for LitzOpt*
