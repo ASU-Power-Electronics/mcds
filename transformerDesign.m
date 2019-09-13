@@ -82,7 +82,7 @@ MU_R_CU = 0.999994;
 MU_CU = MU_R_CU*MU_0;
 RHO_CU = 1.724e-8;
 SIGMA_CU = 1/RHO_CU;
-J_MAX = 3e6;
+J_MAX = 6.8e6; % From fit to data in Odendaal/Ferreira (1999)
 
 %%
 % *Structure Initializations*
@@ -269,7 +269,7 @@ clear coreMaterial % prevents memory access errors
 % * $\alpha$:  transformer regulation
 
 this = Transformer.properties;
-this.B_pk = 0.15;
+this.B_pk = 0.2;
 this.K_u = 0.3;
 this.eta = 0.99;
 this.alpha = (1 - this.eta)/2; % equate core and copper loss for max eta
@@ -634,55 +634,59 @@ end
 
 % compute wire size guidelines and report
 %TODO: Need to include possibility for parallel wires for large J_pk.
-b = Transformer.core.bobbin.breadth*1e3; % to [mm]
-GLstruct = guidelines(thisP, thisS, b);
+%TODO: Should save options...
+%TODO: Correct ACutot to account for number of turns in guidelines.m
+b = Transformer.core.bobbin.breadth;
+h = Transformer.core.bobbin.height;
+GLstruct = guidelines(thisP, thisS, b, h);
 
 disp('Guidelines for Litz Wire Selection:')
+Tp = table;
+Ts = table;
 
 if nwp > 1
     for idx = 1:nwp
-        fprintf('Primary Winding %d:\n', idx)
-        fprintf('Safety limit for conductor bundle equivalent AWG:  %d\n', GLstruct.P(idx).minbAWG)
-        fprintf('Suggested strand size AWG:  %d\n', GLstruct.P(idx).minAWG)
-        fprintf('Associated number of strands:  %d\n', GLstruct.P(idx).ndMax)
-        fprintf('Purchasable option:  %s\n', GLstruct.P(idx).sugStr)
-        fprintf('Resulting outer diameter:  %f mm\n', GLstruct.P(idx).Db*1e3)
-        fprintf('Fits %d conductor bundles per layer.\n\n', GLstruct.P(idx).nbpl)
+        if idx > 1
+            fprintf('\nPrimary Winding %d:\n', idx)
+        else
+            fprintf('Primary Winding %d:\n', idx)
+        end
+        
+        fprintf('Current density minimum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.P(idx).AWGmin), GLstruct.P(idx).Amin*1e6)
+        fprintf('Bobbin window maximum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.P(idx).AWGmax), GLstruct.P(idx).Amax*1e6)
+        Tp = makeConsTable(Tp, GLstruct.P(idx).constructions);
     end
 else
     fprintf('Primary Winding:\n')
-    fprintf('Safety limit for conductor bundle equivalent AWG:  %d\n', GLstruct.P.minbAWG)
-    fprintf('Suggested strand size AWG:  %d\n', GLstruct.P.minAWG)
-    fprintf('Associated number of strands:  %d\n', GLstruct.P.ndMax)
-    fprintf('Purchasable option:  %s\n', GLstruct.P.sugStr)
-    fprintf('Resulting outer diameter:  %f mm\n', GLstruct.P.Db*1e3)
-    fprintf('Fits %d conductor bundles per layer.\n\n', GLstruct.P.nbpl)
+    fprintf('Current density minimum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.P.AWGmin), GLstruct.P.Amin*1e6)
+    fprintf('Bobbin window maximum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.P.AWGmax), GLstruct.P.Amax*1e6)
+    Tp = makeConsTable(Tp, GLstruct.P.constructions);
 end
+
+disp(Tp)
 
 if nws > 1
     for idx = 1:nws
-        fprintf('Secondary Winding %d:\n', idx)
-        fprintf('Safety limit for conductor bundle equivalent AWG:  %d\n', GLstruct.S(idx).minbAWG)
-        fprintf('Suggested strand size AWG:  %d\n', GLstruct.S(idx).minAWG)
-        fprintf('Associated number of strands:  %d\n', GLstruct.S(idx).ndMax)
-        fprintf('Purchasable option:  %s\n', GLstruct.S(idx).sugStr)
-        fprintf('Resulting outer diameter:  %f mm\n', GLstruct.S(idx).Db*1e3)
-        fprintf('Fits %d conductor bundles per layer.\n\n', GLstruct.S(idx).nbpl)
+        fprintf('\nSecondary Winding %d:\n', idx)
+        fprintf('Current density minimum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.S(idx).AWGmin), GLstruct.S(idx).Amin*1e6)
+        fprintf('Bobbin window maximum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.S(idx).AWGmax), GLstruct.S(idx).Amax*1e6)
+        Ts = makeConsTable(Ts, GLstruct.S(idx).constructions);
     end
 else
-    fprintf('Secondary Winding:\n')
-    fprintf('Safety limit for conductor bundle equivalent AWG:  %d\n', GLstruct.S.minbAWG)
-    fprintf('Suggested strand size AWG:  %d\n', GLstruct.S.minAWG)
-    fprintf('Associated number of strands:  %d\n', GLstruct.S.ndMax)
-    fprintf('Purchasable option:  %s\n', GLstruct.S.sugStr)
-    fprintf('Resulting outer diameter:  %f mm\n', GLstruct.S.Db*1e3)
-    fprintf('Fits %d conductor bundles per layer.\n\n', GLstruct.S.nbpl)
+    fprintf('\nSecondary Winding:\n')
+    fprintf('Current density minimum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.S.AWGmin), GLstruct.S.Amin*1e6)
+    fprintf('Bobbin window maximum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.S.AWGmax), GLstruct.S.Amax*1e6)
+    Ts = makeConsTable(Ts, GLstruct.S.constructions);
 end
+
+disp(Ts)
+
+uiwait(msgbox('Click OK to continue to LitzOpt.', 'LitzOpt', 'modal'))
 
 Transformer.winding.primary = orderfields(thisP);
 Transformer.winding.secondary = orderfields(thisS);
 
-clear thisP thisS GLstruct nwp nws b
+clear thisP thisS GLstruct nwp nws b h T
 
 %%
 % *Preparation for LitzOpt*
@@ -764,7 +768,7 @@ tableNames = {'Duration', 'Current'};
 currentTempTable = table([0, diff(Time.t9*1e6)]', I');
 currentTempTable.Properties.VariableNames = tableNames;
 
-disp('LitzOpt Time and Current Vectors:')
+fprintf('\nLitzOpt Time and Current Vectors:\n');
 disp(currentTempTable)
 
 Transformer.winding.primary = orderfields(thisP);
@@ -903,7 +907,7 @@ thisP = Transformer.properties;
 thisP.W_aMin = thisW.A_Cu/thisP.K_u;
 passWa = logical(thisC.W_a > thisP.W_aMin);
 
-% using litzOpt sizes, recalc Kg via required Wa (and check it) 
+% recalc Kg via required Wa (and check it) 
 thisP.K_gMin = thisP.W_aMin*thisC.A_e^2*thisP.K_u/thisC.MLT;
 passKg = logical(thisP.K_g > thisP.K_gMin);
 
@@ -944,6 +948,7 @@ clear thisC thisW thisP
 %TODO: add state space model calculation
 %TODO: add support for different types of windings and also calculate porosity
 %      in windingResistance
+%TODO: double-check current density calculations... think iRMS -> ipk
 
 thisC = Converter;
 thisR = Transformer.core;

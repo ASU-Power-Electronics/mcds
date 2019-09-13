@@ -18,11 +18,11 @@ function Core = selectCore(Core, Properties)
     indices = [];
     count = 0;
     
-    for i = 1:numCores
-        if any(strcmp(Cores(i).materials, matName))
+    for core = 1:numCores
+        if any(strcmp(Cores(core).materials, matName))
             count = count + 1;
-            indices = [indices, i];
-            coreNames{count} = Cores(i).name;
+            indices = [indices, core];
+            coreNames{count} = Cores(core).name;
         end
     end
     
@@ -36,8 +36,8 @@ function Core = selectCore(Core, Properties)
     CoresShort = rmfield(CoresShort, 'materials');
     
     % extract Kg values
-    for i = 1:numCores
-        KgList(i) = CoresShort(i).K_g;
+    for core = 1:numCores
+        KgList(core) = CoresShort(core).K_g;
     end
     
     % prepare minimum value for comparison
@@ -58,15 +58,15 @@ function Core = selectCore(Core, Properties)
             Core = CoresShort(best);
             Core.material = material;
             
-            for i = best:numCores
-                if CoresShort(i).K_g <= 1.1*Core.K_g
-                    idx = [idx, i];
+            for core = best:numCores
+                if CoresShort(core).K_g <= 1.1*Core.K_g
+                    idx = [idx, core];
                 end
             end
             
             if length(idx) > 1
-                for i = 1:length(idx)
-                    Core.opts(i) = CoresShort(idx(i));
+                for core = 1:length(idx)
+                    Core.opts(core) = CoresShort(idx(core));
                 end
             else
                 Core.opts = orderfields(Core);
