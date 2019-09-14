@@ -951,7 +951,6 @@ clear thisC thisW thisP
 %      in windingResistance
 %TODO: double-check current density calculations... think iRMS -> ipk
 %TODO: do better than linear approximation for Steinmetz coefficients
-%TODO: fix layer diameter in windingResistance
 
 thisC = Converter;
 thisR = Transformer.core;
