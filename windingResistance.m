@@ -16,6 +16,11 @@ function [Winding, P] = windingResistance(Winding)
 
     eta = 0.75;  % porosity factor (approximation ~5% for small d_s)
     
+    % Strand outer diameters from Sullivan (1999)
+    alf = 1.12;
+    bet = 0.97;
+    [dref, ~] = AWG2m(40);
+    
     P = 0; % initialize total loss in all windings to 0 for summation
     
     % Primary winding(s)
@@ -28,12 +33,13 @@ function [Winding, P] = windingResistance(Winding)
         thisP.flagLength = str2double(answer{1})*1e-3;
         
         % geometry and counts
-        dl = thisP.d_s; % layer diameter (strand diameter)
+        ds = thisP.d_s;
+        dl = dref*alf*(thisP.d_s/dref)^bet; % layer diameter (strand outer diameter)
         k = thisP.N_s; % number of strands
         length = thisP.length + thisP.flagLength; % length of winding
 
         % DC resistance and loss
-        RsDC = 4*RHO_CU*length/(pi*dl^2); % DC resistance of strand
+        RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
         RwDC = RsDC/(k*thisP.NPW); % DC resistance of winding
         Pw = RwDC*thisP.I_pRMS^2; % DC loss of winding
 
@@ -50,35 +56,36 @@ function [Winding, P] = windingResistance(Winding)
         thisP.P_Cu = Pw*FR;
         P = P + thisP.P_Cu; % sum to total copper loss
     else
-        for i = 1:nwp
+        for w = 1:nwp
             % request winding termination length
-            answer = inputdlg(sprintf('Primary winding %d termination (flag) length [mm]:', i), ...
-                              sprintf('Primary %d Flag Length', i), ...
+            answer = inputdlg(sprintf('Primary winding %d termination (flag) length [mm]:', w), ...
+                              sprintf('Primary %d Flag Length', w), ...
                               1, ...
                               {'100'});
-            thisP(i).flagLength = str2double(answer{1})*1e-3;
+            thisP(w).flagLength = str2double(answer{1})*1e-3;
             
             % geometry and counts
-            dl = thisP(i).d_s; % layer diameter (strand diameter)
-            k = thisP(i).N_s; % number of strands
-            length = thisP(i).length + thisP(i).flagLength; % length of winding
+            ds = thisP(w).d_s;
+            dl = dref*alf*(thisP(w).d_s/dref)^bet; % layer diameter (strand outer diameter)
+            k = thisP(w).N_s; % number of strands
+            length = thisP(w).length + thisP(w).flagLength; % length of winding
 
             % DC resistance and loss
-            RsDC = 4*RHO_CU*length/(pi*dl^2); % DC resistance of strand
-            RwDC = RsDC/(k*thisP(i).NPW); % DC resistance of winding
-            Pw = RwDC*thisP(i).I_pRMS^2; % DC loss of winding
+            RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
+            RwDC = RsDC/(k*thisP(w).NPW); % DC resistance of winding
+            Pw = RwDC*thisP(w).I_pRMS^2; % DC loss of winding
 
             % Dowell's equation
-            Nl = thisP(i).N_L; % number of layers
-            deltaw = thisP(i).delta_p; % skin depth of current in winding
+            Nl = thisP(w).N_L; % number of layers
+            deltaw = thisP(w).delta_p; % skin depth of current in winding
             Nll = Nl*sqrt(k); % effective number of strand layers (square)
 
             A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
             FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
 
-            thisP(i).R = RwDC*FR;
-            thisP(i).P_Cu = Pw*FR;
-            P = P + thisP(i).P_Cu;
+            thisP(w).R = RwDC*FR;
+            thisP(w).P_Cu = Pw*FR;
+            P = P + thisP(w).P_Cu;
         end
     end
     
@@ -92,12 +99,13 @@ function [Winding, P] = windingResistance(Winding)
         thisS.flagLength = str2double(answer{1})*1e-3;
         
         % geometry and counts
-        dl = thisS.d_s; % layer diameter (strand diameter)
+        ds = thisS.d_s;
+        dl = dref*alf*(thisS.d_s/dref)^bet; % layer diameter (strand outer diameter)
         k = thisS.N_s; % number of strands
         length = thisS.length + thisS.flagLength; % length of winding
 
         % DC resistance and loss
-        RsDC = 4*RHO_CU*length/(pi*dl^2); % DC resistance of strand
+        RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
         RwDC = RsDC/(k*thisS.NPW); % DC resistance of winding
         Pw = RwDC*thisS.I_sRMS^2; % DC loss of winding
 
@@ -114,35 +122,36 @@ function [Winding, P] = windingResistance(Winding)
         thisS.P_Cu = Pw*FR;
         P = P + thisS.P_Cu; % sum to total copper loss
     else
-        for i = 1:nws
+        for w = 1:nws
             % request winding termination length
-            answer = inputdlg(sprintf('Secondary winding %d termination (flag) length [mm]:', i), ...
-                              sprintf('Secondary %d Flag Length', i), ...
+            answer = inputdlg(sprintf('Secondary winding %d termination (flag) length [mm]:', w), ...
+                              sprintf('Secondary %d Flag Length', w), ...
                               1, ...
                               {'100'});
-            thisS(i).flagLength = str2double(answer{1})*1e-3;
+            thisS(w).flagLength = str2double(answer{1})*1e-3;
             
             % geometry and counts
-            dl = thisS(i).d_s; % layer diameter (strand diameter)
-            k = thisS(i).N_s; % number of strands
-            length = thisS(i).length + thisS(i).flagLength; % length of winding
+            ds = thisS(w).d_s;
+            dl = dref*alf*(thisS(w).d_s/dref)^bet; % layer diameter (strand outer diameter)
+            k = thisS(w).N_s; % number of strands
+            length = thisS(w).length + thisS(w).flagLength; % length of winding
 
             % DC resistance and loss
-            RsDC = 4*RHO_CU*length/(pi*dl^2); % DC resistance of strand
-            RwDC = RsDC/(k*thisS(i).NPW); % DC resistance of winding
-            Pw = RwDC*thisS(i).I_sRMS^2; % DC loss of winding
+            RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
+            RwDC = RsDC/(k*thisS(w).NPW); % DC resistance of winding
+            Pw = RwDC*thisS(w).I_sRMS^2; % DC loss of winding
 
             % Dowell's equation
-            Nl = thisS(i).N_L; % number of layers
-            deltaw = thisS(i).delta_s; % skin depth of current in winding
+            Nl = thisS(w).N_L; % number of layers
+            deltaw = thisS(w).delta_s; % skin depth of current in winding
             Nll = Nl*sqrt(k); % effective number of strand layers (square)
 
             A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
             FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
 
-            thisS(i).R = RwDC*FR;
-            thisS(i).P_Cu = Pw*FR;
-            P = P + thisS(i).P_Cu;
+            thisS(w).R = RwDC*FR;
+            thisS(w).P_Cu = Pw*FR;
+            P = P + thisS(w).P_Cu;
         end
     end
     
