@@ -588,7 +588,8 @@ clear thisC thisP thisW r h b N nwp nws selectCore
 % the winding current to the RMS value of that current, all divided by 2*pi.
 % This allows the calculation of the skin depth to which the current will
 % permeate the wire.  Thus, to homogenize the current distribution as much as
-% possible, we desire a conductor radius of no greater than 1.5 skin depths.
+% possible, we desire a bundle radius of no greater than 1.5 skin depths, and a
+% strand diameter of about 1/4 of a skin depth.
 % 
 % * $f_{eff, p}$:  primary winding effective frequency in [Hz]
 % * $\delta_{p}$:  primary winding skin depth in [m]
@@ -608,13 +609,13 @@ if nwp > 1
     for idx = 1:nwp
         thisP(idx).f_pEff = (1/(2*pi))*thisP(idx).di_pdt_RMS/thisP(idx).I_pRMS;
         thisP(idx).delta_p = sqrt(RHO_CU/(pi*thisP(idx).f_pEff*MU_CU));
-        thisP(idx).d_pMax = 3*thisP(idx).delta_p;
+        thisP(idx).d_pMax = thisP(idx).delta_p/4;
         thisP(idx).A_pMax = pi*thisP(idx).d_pMax^2/4;
     end
 else
     thisP.f_pEff = (1/(2*pi))*thisP.di_pdt_RMS/thisP.I_pRMS;
     thisP.delta_p = sqrt(RHO_CU/(pi*thisP.f_pEff*MU_CU));
-    thisP.d_pMax = 2*thisP.delta_p;
+    thisP.d_pMax = thisP.delta_p/4;
     thisP.A_pMax = pi*thisP.d_pMax^2/4;    
 end
 
@@ -622,13 +623,13 @@ if nws > 1
     for idx = 1:nws
         thisS(idx).f_sEff = (1/(2*pi))*thisS(idx).di_sdt_RMS/thisS(idx).I_sRMS;
         thisS(idx).delta_s = sqrt(RHO_CU/(pi*thisS(idx).f_sEff*MU_CU));
-        thisS(idx).d_sMax = 3*thisS(idx).delta_s;
+        thisS(idx).d_sMax = thisS(idx).delta_s/4;
         thisS(idx).A_sMax = pi*thisS(idx).d_sMax^2/4; 
     end
 else
     thisS.f_sEff = (1/(2*pi))*thisS.di_sdt_RMS/thisS.I_sRMS;
     thisS.delta_s = sqrt(RHO_CU/(pi*thisS.f_sEff*MU_CU));
-    thisS.d_sMax = 2*thisS.delta_s;
+    thisS.d_sMax = thisS.delta_s/4;
     thisS.A_sMax = pi*thisS.d_sMax^2/4; 
 end
 
@@ -949,6 +950,8 @@ clear thisC thisW thisP
 %TODO: add support for different types of windings and also calculate porosity
 %      in windingResistance
 %TODO: double-check current density calculations... think iRMS -> ipk
+%TODO: do better than linear approximation for Steinmetz coefficients
+%TODO: fix layer diameter in windingResistance
 
 thisC = Converter;
 thisR = Transformer.core;
