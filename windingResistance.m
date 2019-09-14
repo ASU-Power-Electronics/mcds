@@ -24,7 +24,7 @@ function [Winding, P] = windingResistance(Winding)
     P = 0; % initialize total loss in all windings to 0 for summation
     
     % Primary winding(s)
-    if nwp == 1
+    if isequal(nwp, 1)
         % request winding termination length
         answer = inputdlg('Primary winding termination (flag) length [mm]:', ...
                           'Primary Flag Length', ...
@@ -52,6 +52,7 @@ function [Winding, P] = windingResistance(Winding)
         FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
 
         % resistance and copper loss
+        thisP.R_DC = RwDC;
         thisP.R = RwDC*FR;
         thisP.P_Cu = Pw*FR;
         P = P + thisP.P_Cu; % sum to total copper loss
@@ -83,6 +84,7 @@ function [Winding, P] = windingResistance(Winding)
             A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
             FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
 
+            thisP(w).R_DC = RwDC;
             thisP(w).R = RwDC*FR;
             thisP(w).P_Cu = Pw*FR;
             P = P + thisP(w).P_Cu;
@@ -90,7 +92,7 @@ function [Winding, P] = windingResistance(Winding)
     end
     
     % Secondary winding(s)
-    if nws == 1
+    if isequal(nws, 1)
         % request winding termination length
         answer = inputdlg('Secondary winding termination (flag) length [mm]:', ...
                           'Secondary Flag Length', ...
@@ -118,6 +120,7 @@ function [Winding, P] = windingResistance(Winding)
         FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
 
         % resistance and copper loss
+        thisS.R_DC = RwDC;
         thisS.R = RwDC*FR;
         thisS.P_Cu = Pw*FR;
         P = P + thisS.P_Cu; % sum to total copper loss
@@ -149,6 +152,7 @@ function [Winding, P] = windingResistance(Winding)
             A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
             FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
 
+            thisS(w).R_DC = RwDC;
             thisS(w).R = RwDC*FR;
             thisS(w).P_Cu = Pw*FR;
             P = P + thisS(w).P_Cu;

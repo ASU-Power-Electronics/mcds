@@ -599,6 +599,7 @@ clear thisC thisP thisW r h b N nwp nws selectCore
 % * $\delta_{s}$:  secondary winding skin depth in [m]
 % * $d_{strand, s, max}$:  maximum secondary winding strand diameter in [m]
 % * $A_{strand, s, max}$:  maximum secondary winding strand area in [m^2]
+% * $t_{ins}$:  thickness of additional inter-winding space/insulation [m]
 
 thisP = Transformer.winding.primary;
 thisS = Transformer.winding.secondary;
@@ -640,6 +641,8 @@ end
 b = Transformer.core.bobbin.breadth;
 h = Transformer.core.bobbin.height;
 GLstruct = guidelines(thisP, thisS, b, h);
+
+Transformer.winding.t_ins = GLstruct.Wgap;
 
 disp('Guidelines for Litz Wire Selection:')
 Tp = table;
@@ -805,10 +808,12 @@ clear thisP thisS time tkeep idxkeep idx tableNames currentTempTable I vectorLen
 % winding diameter is calculated using the core dimensions and this nominal
 % outer diameter.  The secondary windings are dependent on number of turns and
 % outer diameter of both windings for their position information.
+%TODO: compute eta in litzOptWrapper
 
 Transformer = litzOptWrapper(Transformer, Time);
 
 %TODO: allow user to select one of the options
+%TODO: fix inter-winding space for interleaved windings in arrangeWindings
 % for now, enter results in the provided input dialog:
 
 Transformer.winding = constructWinding(Transformer);

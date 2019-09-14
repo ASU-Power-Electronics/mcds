@@ -2,6 +2,7 @@
 % A complete wrapper for Dartmouth's LitzOpt tool.  Accepts a transformer
 % structure and a time structure corresponding to it.  Returns transformer
 % structure unedited for now.  May include results later.
+% TODO: compute eta instead of declaring it
 
 function T = litzOptWrapper(T, Time)
     global RHO_CU
@@ -23,22 +24,23 @@ function T = litzOptWrapper(T, Time)
         nwp = P.N_wp;
         nws = P.N_ws;
         
-        % packing factor considering bobbin and litz wire porosity factor
-        eta_litz = 0.75;
-        eta_bobbin = (C.bobbin.breadth*C.bobbin.height)/(C.window.breadth*C.window.height);
-        eta = eta_litz*eta_bobbin;
-        
         % per-winding parameters with assumptions:
         % * Full bobbin
         % * Even distribution of window area for all windings
         % Note: centers have x and y reversed from directions! (e.g x: h, y: b)
-        heightVal = C.bobbin.height/nw;
+        Wgap = W.t_ins;
+        heightVal = (C.bobbin.height - Wgap*(nw - 1))/nw;
         breadthVal = C.bobbin.breadth;
         bht = C.window.height - C.bobbin.height; % offset, h direction
         bbt = (C.window.breadth - C.bobbin.breadth)/2; % offset, b direction
         hBase = bht;
         rLegC = (C.d_center + C.d_center2)/4; % circular center leg radius
         Istr = {};
+        
+        % packing factor considering bobbin and litz wire porosity factor
+        eta_litz = 0.75;
+        eta_bobbin = (C.bobbin.breadth*C.bobbin.height)/(C.window.breadth*C.window.height);
+        eta = eta_litz*eta_bobbin;
         
         Nstr = 'N = [';
         hstr = 'a = [';
@@ -61,7 +63,7 @@ function T = litzOptWrapper(T, Time)
                           ', '];
                 Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.primary(p).waveform.i_p9(1:end - 1)), endstr];
                 
-                hBase = hBase + heightVal;
+                hBase = hBase + heightVal + Wgap;
                 w = w + 1;
             end
         else
@@ -75,7 +77,7 @@ function T = litzOptWrapper(T, Time)
                       ', '];
             Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.primary.waveform.i_p9(1:end - 1)), endstr];
             
-            hBase = hBase + heightVal;
+            hBase = hBase + heightVal + Wgap;
             w = w + 1;
         end
 
@@ -98,7 +100,7 @@ function T = litzOptWrapper(T, Time)
                     cystr = [cystr, ', '];
                     lenstr = [lenstr, ', '];
                     
-                    hBase = hBase + heightVal;
+                    hBase = hBase + heightVal + Wgap;
                     w = w + 1;
                 else
                     Nstr = [Nstr, endstr];

@@ -10,6 +10,13 @@ function result = guidelines(P, S, b, h)
     result = struct();
     result.P = struct(); % results for primary winding(s)
     result.S = struct(); % results for secondary winding(s)
+    result.Wgap = 0;
+    
+    resp = inputdlg('Height of additional space/insulation between windings [mm]:', ...
+                    'Adjust inter-winding space', ...
+                    1, {'0'});
+	result.Wgap = str2double(resp)*1e-3;
+    h = h - (nwp + nws - 1)*result.Wgap;
     
     Ab = h*b; % bobbin window area [m]^2
     ACutot = 0;

@@ -1,6 +1,7 @@
 %% constructWinding
 % Constructs a transformer winding, calculating layer geometry using selected
 % wires.
+%TODO: fix inter-winding space for interleaved windings in arrangeWindings
 
 function Winding = constructWinding(Transformer)
     Winding = Transformer.winding;
@@ -12,6 +13,7 @@ function Winding = constructWinding(Transformer)
     nws = Properties.N_ws;
     bb = Core.bobbin.breadth;
     Winding.A_Cu = 0;
+    Wgap = Winding.t_ins;
     
     % add fields to all primary windings
     Z = num2cell(zeros(size(thisP(:))));
@@ -181,7 +183,7 @@ function Winding = constructWinding(Transformer)
         fprintf('Secondary layer count:  %d\n', thisS.N_L)
     end
     
-    [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Core);
+    [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core);
 
     Winding.primary = orderfields(thisP);
     Winding.secondary = orderfields(thisS);

@@ -1,8 +1,9 @@
 %% arrangeWindings
 % Arranges windings in window.  Allows interleaving of windings, but only full
 % interleaving (PSPS...PS/SP), since it is most advantageous.
+% TODO: fix inter-winding space for interleaved windings
 
-function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Core)
+function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
     N_Lp = 0;
     N_Ls = 0;
     
@@ -65,18 +66,22 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Core)
                             thisP(idx).diameter = lastDiameter + thisP(idx).d_o*thisP(idx).N_L;
                             % outer diameter of winding (for next winding)
                             lastDiameter = thisP(idx).diameter + thisP(idx).d_o*thisP(idx).N_L;
+                            % inter-winding space
+                            lastDiameter = lastDiameter + Wgap;
                             % length using MLT*N
                             thisP(idx).length = pi*thisP(idx).diameter*thisP(idx).N;
                         end
                     else
                         thisP(idx).diameter = lastDiameter + thisP(idx).d_o*thisP(idx).N_L;
                         lastDiameter = thisP(idx).diameter + thisP(idx).d_o*thisP(idx).N_L;
+                        lastDiameter = lastDiameter + Wgap;
                         thisP(idx).length = pi*thisP(idx).diameter*thisP(idx).N;
                     end
                 end
             else
                 thisP.diameter = lastDiameter + thisP.d_o*thisP.N_L;
                 lastDiameter = thisP.diameter + thisP.d_o*thisP.N_L;
+                lastDiameter = lastDiameter + Wgap;
                 thisP.length = pi*thisP.diameter*thisP.N;
             end
 
@@ -93,11 +98,21 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Core)
                             bifMatch = 1;
                             thisS(idx).diameter = lastDiameter + thisS(idx).d_o*thisS(idx).N_L;
                             lastDiameter = thisS(idx).diameter + thisS(idx).d_o*thisS(idx).N_L;
+                            
+                            if idx < nws
+                                lastDiameter = lastDiameter + Wgap;
+                            end
+                            
                             thisS(idx).length = pi*thisS(idx).diameter*thisS(idx).N;
                         end
                     else
                         thisS(idx).diameter = lastDiameter + thisS(idx).d_o*thisS(idx).N_L;
                         lastDiameter = thisS(idx).diameter + thisS(idx).d_o*thisS(idx).N_L;
+                        
+                        if idx < nws
+                            lastDiameter = lastDiameter + Wgap;
+                        end
+                        
                         thisS(idx).length = pi*thisS(idx).diameter*thisS(idx).N;
                     end
                 end
