@@ -1,6 +1,7 @@
 %% conjureLayers
 % Conjures up a layer structure, maximizing number of turns per layer first.
-% Returns the turns per layer and number of layers.
+% Returns the turns per layer and number of layers.  Forces single layer if no
+% proper configuration is found by the time the number of turns is reached.
 
 function [tpl, N_L] = conjureLayers(Winding)
     flag = 0;
@@ -13,7 +14,12 @@ function [tpl, N_L] = conjureLayers(Winding)
             N_L = layers;
             flag = 1;
         else
-            layers = layers + 1;
+            if layers > turns
+                layers = 1;
+                flag = 1;
+            else
+                layers = layers + 1;
+            end
         end
     end    
 end

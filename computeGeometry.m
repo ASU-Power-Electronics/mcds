@@ -1,5 +1,6 @@
 %% computeGeometry
-% Computes winding geometry from prompt response.
+% Computes winding geometry from prompt response.  Forces single turn per layer
+% if floor of bobbin breadth/winding width is zero.
 
 function Winding = computeGeometry(Winding, bb, answer)
     Winding.AWG_s = str2double(answer{1});
@@ -8,7 +9,7 @@ function Winding = computeGeometry(Winding, bb, answer)
 
     [Winding.d_s, Winding.A_s] = AWG2m(Winding.AWG_s);
     Winding.d_o = sqrt(Winding.N_s/Winding.NPW)*Winding.d_s/0.68125;
-    Winding.tplMax = floor(bb/(Winding.NPW*Winding.bifilar*Winding.d_o));
+    Winding.tplMax = max([floor(bb/(Winding.NPW*Winding.bifilar*Winding.d_o)), 1]);    
     [Winding.tpl, Winding.N_L] = conjureLayers(Winding);
     Winding.A_w_Cu = Winding.A_s*Winding.N_s;
     Winding.A_Cu = Winding.A_w_Cu*Winding.N;

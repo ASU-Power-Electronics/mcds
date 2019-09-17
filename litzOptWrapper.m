@@ -92,7 +92,7 @@ function T = litzOptWrapper(T, Time)
                           num2str(2*pi*(rLegC + hBase + heightVal/2), '%g')];
                 Istr{w + 1, 1} = [sprintf('I(%d, :) = [', w + 1), stringifyVector(W.secondary(s).waveform.i_s9(1:end - 1)), endstr];
                 
-                if w < nw
+                if w < nw - 1
                     Nstr = [Nstr, ', '];
                     hstr = [hstr, ', '];
                     wstr = [wstr, ', '];

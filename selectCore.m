@@ -54,6 +54,12 @@ function Core = selectCore(Core, Properties)
             idx = [];
             KgFit = KgList - KgMin;
             minKgFit = min(KgFit(KgFit > 0));
+            
+            if isempty(minKgFit)
+                minKgFit = -min(abs(KgFit));
+                warning('No cores in database with Kg greater than minimum.  Results may be suboptimal.')
+            end
+            
             [~, best] = find(KgFit == minKgFit);
             Core = CoresShort(best);
             Core.material = material;

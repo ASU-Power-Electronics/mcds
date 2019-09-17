@@ -23,8 +23,8 @@ function [t, idx] = niner(t0, w0, wp0)
     
     t = t0(idx);
     w = w0(idx);
-    w0RMS = rms(w0(1:end - 1));
-    
+%     w0RMS = rms(w0(1:end - 1));
+%     
 %     figure
 %     hold on
 %     plot(t0, w0)

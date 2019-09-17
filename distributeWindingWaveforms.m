@@ -3,16 +3,19 @@
 % structure in original files:
 % 
 % Primary:
-% |Time    vp1    ip1    vp2    ip2   ...|
+% Time    vp1    ip1    vp2    ip2   ...
 % 
 % Secondary:
-% |Time    vs1    is1    vs2    is2   ...|
+% Time    vs1    is1    vs2    is2   ...
 
-function Winding = distributeWindingWaveforms(Winding, ptemp, stemp, tVec, time)
+function [T, Winding] = distributeWindingWaveforms(Winding, ptemp, stemp, tVec, T, f_s)
     thisP = Winding.primary;
     thisS = Winding.secondary;
     [~, nwp] = size(thisP);
     [~, nws] = size(thisS);
+    time = linspace(0, 1/f_s, 1025);
+    dt = time(2) - time(1);
+    
     Ts = time(end);
     
     [ptemp, t] = cleanupWaveforms(ptemp, tVec, Ts);
@@ -23,6 +26,7 @@ function Winding = distributeWindingWaveforms(Winding, ptemp, stemp, tVec, time)
     if nwp == 1
         thisP.waveform.v_p = interp1(tVec, ptemp(:, 2), time);
         thisP.waveform.i_p = interp1(tVec, ptemp(:, 3), time);
+        
         % avoid numerical errors and assume periodic point
         thisP.waveform.v_p(end) = thisP.waveform.v_p(1);
         thisP.waveform.i_p(end) = thisP.waveform.i_p(1);
@@ -50,7 +54,10 @@ function Winding = distributeWindingWaveforms(Winding, ptemp, stemp, tVec, time)
             thisS(i).waveform.i_s(end) = thisS(i).waveform.i_s(1);
         end
     end
+    
+    T.t = time;
+    T.dt = dt;
 
-Winding.primary = thisP;
-Winding.secondary = thisS;
+    Winding.primary = thisP;
+    Winding.secondary = thisS;
 end

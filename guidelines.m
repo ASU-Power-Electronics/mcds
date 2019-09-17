@@ -9,7 +9,9 @@ function result = guidelines(P, S, b, h)
     [~, nws] = size(S);
     result = struct();
     result.P = struct(); % results for primary winding(s)
+    result.P.constructions = struct();
     result.S = struct(); % results for secondary winding(s)
+    result.S.constructions = struct();
     result.Wgap = 0;
     
     resp = inputdlg('Height of additional space/insulation between windings [mm]:', ...
@@ -61,6 +63,11 @@ function result = guidelines(P, S, b, h)
         for p = 1:nwp
             thisW = P(p);
             thisR = result.P(p);
+            
+            % structure arrays need fields pre-defined
+            result.P(p).Amax = [];
+            result.P(p).AWGmin = [];
+            result.P(p).AWGmax = [];
             result.P(p) = computeResultsP(thisW, thisR);
         end
     else
@@ -73,6 +80,11 @@ function result = guidelines(P, S, b, h)
         for s = 1:nws
             thisW = S(s);
             thisR = result.S(s);
+            
+            % structure arrays need fields pre-defined
+            result.S(s).Amax = [];
+            result.S(s).AWGmin = [];
+            result.S(s).AWGmax = [];
             result.S(s) = computeResultsS(thisW, thisR);
         end
     else
@@ -150,6 +162,16 @@ function result = guidelines(P, S, b, h)
                         construction.A_b = Wires.AWG(awg).A_b(validCon);
                         construction.D_o = Wires.AWG(awg).D_o(validCon);
                         construction.N_bpl = floor(b./Wires.AWG(awg).D_o(validCon));
+                        
+                        if isempty(fieldnames(res.constructions))
+                            res.constructions.N_s = [];
+                            res.constructions.AWG = [];
+                            res.constructions.AWG_e = [];
+                            res.constructions.A_b = [];
+                            res.constructions.D_o = [];
+                            res.constructions.N_bpl = [];
+                        end
+                        
                         res.constructions(validCons) = construction;
                     end
                 end
@@ -224,6 +246,16 @@ function result = guidelines(P, S, b, h)
                         construction.A_b = Wires.AWG(awg).A_b(validCon);
                         construction.D_o = Wires.AWG(awg).D_o(validCon);
                         construction.N_bpl = floor(b./Wires.AWG(awg).D_o(validCon));
+                        
+                        if isempty(fieldnames(res.constructions))
+                            res.constructions.N_s = [];
+                            res.constructions.AWG = [];
+                            res.constructions.AWG_e = [];
+                            res.constructions.A_b = [];
+                            res.constructions.D_o = [];
+                            res.constructions.N_bpl = [];
+                        end
+                        
                         res.constructions(validCons) = construction;
                     end
                 end

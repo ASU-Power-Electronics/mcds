@@ -21,16 +21,12 @@
 % * Eventually would like to connect this to converterDesign.m for a more
 % complete solution to that problem.
 % * Inductor design needs a solution
-% * The core database is incomplete - needs more size and shape info
-% * - Where did 3C98 go?
-% * GUI design
+% * GUI design?
 % * *Transformer Structure Implementation*
 % * - Can combine thisC, thisW, etc. into this as substructures (e.g. this.C)
 % * *Other Stuff/Current Work*
-% * - Format console output as tables (or messageboxes) where possible
 % * - Implement iteration and pass counter token
 % * - Implement D_eff for SFDT
-% * - Implement manual overrides for windings (with UI)
 % * - Generate Maxwell vbscripts based on core/windings
 % * - Attach to PLECS via simulink blockset for faster iterations
 % * - Investigate *webread* for scraping HTML
@@ -101,7 +97,7 @@ Transformer = struct('core', struct,...
 % transformer design specs, etc.), and other, temporary variables to use as
 % initial points.  These values establish the physical parameters of the
 % problem, including all design-specific variables related to the converter and
-% transformer.
+% transformer.  Now allows for an input frequency component for AC input.
 %%
 % *Converter Base Parameters*
 % 
@@ -123,11 +119,12 @@ switch button
                            'Maximum Input Voltage [V]', ...
                            'Nominal Output Voltage [V]', ...
                            'Nominal Output Power [W]', ...
+                           'Input AC Frequency (0 if DC) [Hz]', ...
                            'Switching Frequency [Hz]', ...
                            'Duty Ratio [#]'}, ...
                           'Converter Parameters', ...
                           1, ...
-                          {'0', '0', '0', '0', '0', '0', '0'});
+                          {'0', '0', '0', '0', '0', '0', '0', '0'});
                       
         if isempty(answer) % cancel button handling
             error('Aborted, exiting design script.')
@@ -139,8 +136,9 @@ switch button
         this.V_inMax = str2double(answer{3});
         this.V_o = str2double(answer{4});
         this.P_o = str2double(answer{5});
-        this.f_s = str2double(answer{6});
-        this.D = str2double(answer{7});
+        this.f_0 = str2double(answer{6});
+        this.f_s = str2double(answer{7});
+        this.D = str2double(answer{8});
 
         Converter = orderfields(this); % one-way (set) alias for cleanup
         clear this answer
@@ -160,6 +158,7 @@ clear button
 % 
 %TODO: Add option to calculate number of turns automatically by
 % N = ceil(V_RMS/(K_f*f*B_sat*Ae)); will likely need to defer until later
+% with phi_pk = Ae*B_pk, we can approximate as early as waveform import
 
 answer = inputdlg({'Number of primary windings', ...
                    'Number of turns in each primary winding (comma-separated)', ...
@@ -209,11 +208,15 @@ clear thisW thisP answer pWindings pTurns sWindings sTurns
 % CSV format, with columns specified in distributeWindingWaveforms.m, and each
 % set should have the same number of points and sampling rate.  Further, it
 % should represent a single converter switching cycle, representative of the
-% converter's operation, if possible.  All primary winding waveforms should be
-% in one file, while all secondary windings should be in another.
+% converter's operation, if possible.  If there is a low-frequency component,
+% one full cycle of that component should be provided, with the switching
+% waveform modulating it. All primary winding waveforms should be in one file,
+% while all secondary windings should be in another.
 % 
-% * $t$:  time vector in [s]
-% * $dt$:  differential element of time in [s]
+% * $t$:  switching time vector in [s]
+% * $dt$:  differential element of switching time in [s]
+% * $t_0$:  low-frequency input time vector in [s]
+% * $dt_0$:  differential element of low-frequency input time in [s]
 % * $v_p(t)$:  primary winding voltage in [V]
 % * $i_p(t)$:  primary winding current in [A]
 % * $v_{s1}(t)$:  secondary winding 1 voltage in [V]
@@ -228,14 +231,16 @@ getString = 'Select primary winding voltage and current waveform file';
 ptemp = csvread([PathName, FileName], 1, 0);
     
 tVec = ptemp(:, 1) - ptemp(1, 1);
-Time.t = linspace(0, 1/Converter.f_s, 1025);
-Time.dt = Time.t(2) - Time.t(1);
 
 getString = 'Select secondary winding voltage and current waveform file';
 [FileName, PathName] = uigetfile('.csv', getString);
-stemp = csvread([PathName, FileName], 1, 1); % exclude time vector for brevity
+stemp = csvread([PathName, FileName], 1, 1); % exclude time vector
 
-this = distributeWindingWaveforms(this, ptemp, stemp, tVec, Time.t);
+if isequal(Converter.f_0, 0)
+    [Time, this] = distributeWindingWaveforms(this, ptemp, stemp, tVec, Time, Converter.f_s);
+else
+    [Time, this] = distributeWindingWaveformsLF(this, ptemp, stemp, tVec, Time, Converter.f_s, Converter.f_0);
+end
 
 Transformer.winding = orderfields(this);
 clear FileName PathName ptemp stemp tVec this getString
@@ -290,7 +295,7 @@ thisP = Transformer.properties;
 % *Converter Calculated Parameters*
 %
 % * $n$:  transformer turns ratio
-% * $I_o$:  nominal converter output current in [A]
+% * $I_o$:  nominal CCA converter output current in [A]
 % * $T_s$:  converter switching period in [s]
 
 if numel([thisW.secondary(:).N]) > 1
@@ -311,7 +316,8 @@ thisC.T_s = 1/thisC.f_s;
 % the AC waveform to compute I_RMS = sqrt(I_DC^2 + I_ACRMS^2).  The derivative
 % of the current is approximated by a finite difference and its RMS value is
 % computed using MATLAB's built-in rms() function.  The RMS value of the voltage
-% is computed in the same way.
+% is computed in the same way.  In the case of low-frequency oscillation, the
+% RMS values are computed using the low-frequency RMS in place of the DC value.
 % 
 % * $P_p$:  primary VA rating in [W]
 % * $P_s$:  secondary VA rating in [W]
@@ -321,64 +327,15 @@ thisC.T_s = 1/thisC.f_s;
 % * $V_{p, RMS}$:  primary root-mean-square voltage in [V]
 % * $V_{s, RMS}$:  secondary root-mean-square voltage in [V]
 
-nwp = thisP.N_wp;
-nws = thisP.N_ws;
-thisP.P_t = 0; % initialize throughput power to zero for summation
-
-if nwp > 1
-    for i = 1:nwp
-        iwf = thisW.primary(i).waveform.i_p;
-        vwf = thisW.primary(i).waveform.v_p;
-        thisW.primary(i).I_pRMS = computePERMS(iwf);
-        thisW.primary(i).V_pRMS = computePERMS(vwf);
-        thisW.primary(i).VA = thisW.primary(i).I_pRMS*thisW.primary(i).V_pRMS;
-        thisP.P_t = thisP.P_t + thisW.primary(i).VA;
-        temp = [thisW.primary(i).waveform.i_p, thisW.primary(i).waveform.i_p(1)];
-        thisW.primary(i).waveform.di_pdt = diff(temp)/Time.dt;
-        thisW.primary(i).di_pdt_RMS = rms(thisW.primary(i).waveform.di_pdt(1:end - 1));
-    end
-else
-    iwf = thisW.primary.waveform.i_p;
-    vwf = thisW.primary.waveform.v_p;
-    thisW.primary.I_pRMS = computePERMS(iwf);
-    thisW.primary.V_pRMS = computePERMS(vwf);
-    thisW.primary.VA = thisW.primary.I_pRMS*thisW.primary.V_pRMS;
-    thisP.P_t = thisP.P_t + thisW.primary.VA;
-    temp = [thisW.primary.waveform.i_p, thisW.primary.waveform.i_p(1)];
-    thisW.primary.waveform.di_pdt = diff(temp)/Time.dt;
-    thisW.primary.di_pdt_RMS = rms(thisW.primary.waveform.di_pdt(1:end - 1));
-end
-
-if nws > 1
-    for i = 1:nws
-        iwf = thisW.secondary(i).waveform.i_s;
-        vwf = thisW.secondary(i).waveform.v_s;
-        thisW.secondary(i).I_sRMS = computePERMS(iwf);
-        thisW.secondary(i).V_sRMS = computePERMS(vwf);
-        thisW.secondary(i).VA = thisW.secondary(i).I_sRMS*thisW.secondary(i).V_sRMS;
-        thisP.P_t = thisP.P_t + thisW.secondary(i).VA;
-        temp = [thisW.secondary(i).waveform.i_s, thisW.secondary(i).waveform.i_s(1)];
-        thisW.secondary(i).waveform.di_sdt = diff(temp)/Time.dt;
-        thisW.secondary(i).di_sdt_RMS = rms(thisW.secondary(i).waveform.di_sdt(1:end - 1));
-    end
-else
-    iwf = thisW.secondary.waveform.i_s;
-    vwf = thisW.secondary.waveform.v_s;
-    thisW.secondary.I_sRMS = computePERMS(iwf);
-    thisW.secondary.V_sRMS = computePERMS(vwf);
-    thisW.secondary.VA = thisW.secondary.I_sRMS*thisW.secondary.V_sRMS;
-    thisP.P_t = thisP.P_t + thisW.secondary.VA;
-    temp = [thisW.secondary.waveform.i_s, thisW.secondary.waveform.i_s(1)];
-    thisW.secondary.waveform.di_sdt = diff(temp)/Time.dt;
-    thisW.secondary.di_sdt_RMS = rms(thisW.secondary.waveform.di_sdt(1:end - 1));
-end
+LF = thisC.f_0 > 0;
+[thisP, thisW] = analyzeWindingWaveforms(thisP, thisW, LF, Time);
 
 % alias set block
 Converter = orderfields(thisC);
 Transformer.properties = orderfields(thisP);
 Transformer.core = orderfields(thisR);
 Transformer.winding = orderfields(thisW);
-clear thisC thisR thisW thisP nwp nws iwf vwf temp
+clear thisC thisR thisW thisP
 
 %% Design Process
 % The main transformer design process begins here.
@@ -393,29 +350,15 @@ clear thisC thisR thisW thisP nwp nws iwf vwf temp
 % * $K_e$:  so-called "electrical conditions" in [W/m^5]
 % * $K_g$:  core geometry coefficient in [m^5]
 
-this = Transformer.properties;
+thisC = Converter;
+thisP = Transformer.properties;
+thisW = Transformer.winding;
 
-if this.N_wp > 1
-    nwp = Transformer.winding.primary(1).N;
-    vwf = Transformer.winding.primary(1).waveform.v_p/nwp;
-    iwf = Transformer.winding.primary(1).waveform.i_p;
-else
-    nwp = Transformer.winding.primary.N;
-    vwf = Transformer.winding.primary.waveform.v_p/nwp;
-    iwf = Transformer.winding.primary.waveform.i_p;
-end
+[thisP, thisW] = computeCoreGeometry(thisC, thisP, thisW, Time);
 
-if any(iwf < 0)
-    symmetric = true;
-else
-    symmetric = false;
-end
-
-this.K_f = waveformFactor(vwf, Time.t, symmetric);
-this.K_e = 0.5*SIGMA_CU*this.K_f^2*Converter.f_s^2*this.B_pk^2;
-this.K_g = this.P_t/(2*this.alpha*this.K_e)*100; % returned to 100%
-Transformer.properties = orderfields(this);
-clear this vwf iwf nwp symmetric
+Transformer.properties = orderfields(thisP);
+Transformer.winding = orderfields(thisW);
+clear thisC thisP thisW
 
 %%
 % *Run SFDT*
@@ -444,7 +387,7 @@ clear this vwf iwf nwp symmetric
 thisC = Converter;
 thisT = Transformer;
 temp = min([thisT.core.material.main.T_c - 25, 115]);
-Kg = thisT.properties.K_g*1e15;  % from m^5 to mm^5 for display
+Kg = thisT.properties.K_g*1e10;  % from m^5 to cm^5 for display
 fprintf('\nSFDT Input Values:\n')
 fprintf('Minimum throughput power:  %g W\n', thisT.properties.P_t)
 fprintf('Maximum throughput power:  %g W\n', 2*thisT.properties.P_t)
@@ -454,7 +397,7 @@ fprintf('Allowed temperature rise:  %g degrees C\n', temp)
 fprintf('Converter type:  Half-Bridge --> Push-Pull\n')
 fprintf('Copper fill factor:  0.3\n')
 fprintf('Effective duty factor:  %g\n\n', thisC.D)
-fprintf('Initial Core Geometry Coefficient :  %g mm^5\n\n', Kg)
+fprintf('Initial Core Geometry Coefficient :  %g cm^5\n\n', Kg)
 
 % multipass token and D_eff calculation not yet implemented (example follows)
 % if pass == 1
@@ -637,7 +580,6 @@ end
 % compute wire size guidelines and report
 %TODO: Need to include possibility for parallel wires for large J_pk.
 %TODO: Should save options...
-%TODO: Correct ACutot to account for number of turns in guidelines.m
 b = Transformer.core.bobbin.breadth;
 h = Transformer.core.bobbin.height;
 GLstruct = guidelines(thisP, thisS, b, h);
@@ -658,13 +600,23 @@ if nwp > 1
         
         fprintf('Current density minimum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.P(idx).AWGmin), GLstruct.P(idx).Amin*1e6)
         fprintf('Bobbin window maximum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.P(idx).AWGmax), GLstruct.P(idx).Amax*1e6)
-        Tp = makeConsTable(Tp, GLstruct.P(idx).constructions);
+        
+        if ~isempty(GLstruct.P(idx).constructions) && ~isempty(fieldnames(GLstruct.P(idx).constructions))
+            Tp = makeConsTable(Tp, GLstruct.P(idx).constructions);
+        else
+            fprintf('No suggestions for primary winding %d.\n', idx)
+        end
     end
 else
     fprintf('Primary Winding:\n')
     fprintf('Current density minimum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.P.AWGmin), GLstruct.P.Amin*1e6)
     fprintf('Bobbin window maximum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.P.AWGmax), GLstruct.P.Amax*1e6)
-    Tp = makeConsTable(Tp, GLstruct.P.constructions);
+        
+    if ~isempty(fieldnames(GLstruct.P.constructions))
+        Tp = makeConsTable(Tp, GLstruct.P.constructions);
+    else
+        fprintf('No suggestions for primary winding.\n')
+    end
 end
 
 disp(Tp)
@@ -674,13 +626,23 @@ if nws > 1
         fprintf('\nSecondary Winding %d:\n', idx)
         fprintf('Current density minimum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.S(idx).AWGmin), GLstruct.S(idx).Amin*1e6)
         fprintf('Bobbin window maximum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.S(idx).AWGmax), GLstruct.S(idx).Amax*1e6)
-        Ts = makeConsTable(Ts, GLstruct.S(idx).constructions);
+        
+        if ~isempty(GLstruct.S(idx).constructions) && ~isempty(fieldnames(GLstruct.S(idx).constructions))
+            Ts = makeConsTable(Ts, GLstruct.S(idx).constructions);
+        else
+            fprintf('No suggestions for secondary winding %d.\n', idx)
+        end
     end
 else
     fprintf('\nSecondary Winding:\n')
     fprintf('Current density minimum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.S.AWGmin), GLstruct.S.Amin*1e6)
     fprintf('Bobbin window maximum bundle size AWG:  %d (%.2f mm^2)\n', round(GLstruct.S.AWGmax), GLstruct.S.Amax*1e6)
-    Ts = makeConsTable(Ts, GLstruct.S.constructions);
+        
+    if ~isempty(fieldnames(GLstruct.S.constructions))
+        Ts = makeConsTable(Ts, GLstruct.S.constructions);
+    else
+        fprintf('No suggestions for secondary winding.\n')
+    end
 end
 
 disp(Ts)
@@ -699,6 +661,10 @@ clear thisP thisS GLstruct nwp nws b h Tp Ts
 % derivative of the supplied waveform).  The waveform with the largest number of
 % changes will determine the size of all.  This is the result of setting up for
 % manual entry, but now exists only because "it's always been that way".
+%
+% Note: in the case of low-frequency oscillation, its contribution will be very
+% small in terms of high-frequency effects in the windings, so only the
+% switching waveform will be used.
 
 thisP = Transformer.winding.primary;
 thisS = Transformer.winding.secondary;
@@ -711,8 +677,18 @@ idxkeep = tkeep;
 
 % extract and compare length of time vector for primary winding(s)
 if nwp > 1
-    for i = 1:nwp
-        [time, idx] = niner(Time.t, thisP(i).waveform.i_p, thisP(i).waveform.di_pdt);
+    for w = 1:nwp
+        if Converter.f_0 > 0
+            iwf = thisP(w).waveform.i_pHF;
+            diwf = thisP(w).waveform.di_pHFdt;
+            t = Time.t_s;
+        else
+            iwf = thisP(w).waveform.i_p;
+            diwf = thisP(w).waveform.di_pdt;
+            t = Time.t;
+        end
+        
+        [time, idx] = niner(t, iwf, diwf);
         if length(time) > vectorLength
             vectorLength = length(time);
             tkeep = time;
@@ -720,7 +696,17 @@ if nwp > 1
         end
     end
 else
-    [time, idx] = niner(Time.t, thisP.waveform.i_p, thisP.waveform.di_pdt);
+    if Converter.f_0 > 0
+        iwf = thisP.waveform.i_pHF;
+        diwf = thisP.waveform.di_pHFdt;
+        t = Time.t_s;
+    else
+        iwf = thisP.waveform.i_p;
+        diwf = thisP.waveform.di_pdt;
+        t = Time.t;
+    end
+    
+    [time, idx] = niner(t, iwf, diwf);
     tkeep = time;
     vectorLength = length(time);
     idxkeep = idx;
@@ -728,8 +714,18 @@ end
 
 % extract and compare length of time vector for secondary winding(s)
 if nws > 1
-    for i = 1:nws
-        [time, idx] = niner(Time.t, thisS(i).waveform.i_s, thisS(i).waveform.di_sdt);
+    for w = 1:nws
+        if Converter.f_0 > 0
+            iwf = thisS(w).waveform.i_sHF;
+            diwf = thisS(w).waveform.di_sHFdt;
+            t = Time.t_s;
+        else
+            iwf = thisS(w).waveform.i_s;
+            diwf = thisS(w).waveform.di_sdt;
+            t = Time.t;
+        end
+        
+        [time, idx] = niner(t, iwf, diwf);
         if length(time) > vectorLength
             vectorLength = length(time);
             tkeep = time;
@@ -737,7 +733,17 @@ if nws > 1
         end
     end    
 else
-    [time, idx] = niner(Time.t, thisS(1).waveform.i_s, thisS(1).waveform.di_sdt);
+    if Converter.f_0 > 0
+        iwf = thisS.waveform.i_sHF;
+        diwf = thisS.waveform.di_sHFdt;
+        t = Time.t_s;
+    else
+        iwf = thisS.waveform.i_s;
+        diwf = thisS.waveform.di_sdt;
+        t = Time.t;
+    end
+        
+    [time, idx] = niner(t, iwf, diwf);
     if length(time) > vectorLength
         tkeep = time;
         idxkeep = idx;
@@ -748,22 +754,46 @@ Time.t9 = tkeep;
 I = zeros(nwp + nws, length(tkeep));
 
 if nwp > 1
-    for i = 1:nwp
-        thisP(i).waveform.i_p9 = thisP(i).waveform.i_p(idxkeep);
-        I(i, :) = thisP(i).waveform.i_p9;
+    for w = 1:nwp
+        if Converter.f_0 > 0
+            iwf = thisP(w).waveform.i_pHF;
+        else
+            iwf = thisP(w).waveform.i_p;
+        end
+        
+        thisP(w).waveform.i_p9 = iwf(idxkeep);
+        I(w, :) = thisP(w).waveform.i_p9;
     end
 else
-    thisP.waveform.i_p9 = thisP.waveform.i_p(idxkeep);
+    if Converter.f_0 > 0
+        iwf = thisP.waveform.i_pHF;
+    else
+        iwf = thisP.waveform.i_p;
+    end
+    
+    thisP.waveform.i_p9 = iwf(idxkeep);
     I(1, :) = thisP.waveform.i_p9;
 end
 
 if nws > 1
-    for i = nwp + 1:nwp + nws
-        thisS(i - nwp).waveform.i_s9 = thisS(i - nwp).waveform.i_s(idxkeep);
-        I(i, :) = thisS(i - nwp).waveform.i_s9;
+    for w = nwp + 1:nwp + nws
+        if Converter.f_0 > 0
+            iwf = thisS(w - nwp).waveform.i_sHF;
+        else
+            iwf = thisS(w - nwp).waveform.i_s;
+        end
+        
+        thisS(w - nwp).waveform.i_s9 = iwf(idxkeep);
+        I(w, :) = thisS(w - nwp).waveform.i_s9;
     end
 else
-    thisS.waveform.i_s9 = thisS.waveform.i_s(idxkeep);
+    if Converter.f_0 > 0
+        iwf = thisS.waveform.i_sHF;
+    else
+        iwf = thisS.waveform.i_s;
+    end
+    
+    thisS.waveform.i_s9 = iwf(idxkeep);
     I(nwp + 1, :) = thisS.waveform.i_s9;
 end
 
@@ -777,7 +807,9 @@ disp(currentTempTable)
 
 Transformer.winding.primary = orderfields(thisP);
 Transformer.winding.secondary = orderfields(thisS);
-clear thisP thisS time tkeep idxkeep idx tableNames currentTempTable I vectorLength
+clear thisP thisS
+clear time tkeep idxkeep t w idx I vectorLength
+clear tableNames currentTempTable
 
 %%
 % *LitzOpt Optimization*
@@ -1020,11 +1052,15 @@ thisR.MMF = thisR.phi*thisR.R;
 thisR.B = thisR.phi./thisR.A_e;
 thisP.B_pk = max(abs(thisR.B));
 
-% formulation based on McLyman, Hurley/Wolfle
-thisP.J_pk = thisP.P_t/(thisP.K_f*thisC.f_s*thisP.K_u*thisP.A_p*thisP.B_pk);
+% Window peak current density formulation based on McLyman, Hurley/Wolfle
+if thisC.f_0 > 0
+    thisP.J_pk = thisP.P_tHF/(thisP.K_fs*thisC.f_s*thisP.K_u*thisP.A_p*thisP.B_pk);
+else
+    thisP.J_pk = thisP.P_tHF/(thisP.K_f*thisC.f_s*thisP.K_u*thisP.A_p*thisP.B_pk);
+end
 
 % current density safety checks
-passJ = logical(thisP.J_pk < J_MAX); % window current density
+passJ = logical(thisP.J_pk < J_MAX);
 
 fprintf('Window peak current density is within safety limit: %d\n', passJ)
 
@@ -1079,6 +1115,7 @@ end
 % the speed has improved immensely.  The PWL approximation to k_i has also been
 % replaced by the full numerical integration explained in the paper.  This
 % version is included as 'corelossEdit.m'.
+%
 % call coreloss.m and suppress console output in favor of our formatting
 thisR.P_V = corelossEdit(Time.t, thisR.B, alpha, beta, k, 1)*1e-3; % [W/m^3]
 thisP.P_Fe = thisR.P_V*thisR.V_e;

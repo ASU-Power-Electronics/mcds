@@ -21,7 +21,8 @@
 % Corrected 11/05 C. Sullivan:  fixed minor loop handling bug ("minortime" was mistyped as minorime")
 %
 % Updated 9/19 R. S. Mongrain:  Modernized for speed and memory usage.  Comments
-% cleaned up, variables given self-documenting names.
+% cleaned up, variables given self-documenting names.  Full implementation of
+% iGSE used instead of PWL approximation.
 
 function y = corelossEdit(tvs, B, alpha, beta, k, suppressFlag)
     % tvs is what was called "time" in help info above.
@@ -42,7 +43,7 @@ function y = corelossEdit(tvs, B, alpha, beta, k, suppressFlag)
         error = 'Since the PWL input is periodic, the first flux value must equal the last';
     end
     
-    % force row vectors
+    % R. Scott Mongrain - force row vectors to avoid indexing errors
     if size(tvs, 1) > size(tvs, 2)
         tvs = tvs';
     end
@@ -82,7 +83,7 @@ function y = corelossEdit(tvs, B, alpha, beta, k, suppressFlag)
 
 
     % gsepwl
-    % to calculate core loss per unit volume using GSE for PWL signal form
+    % to calculate core loss per unit volume using iGSE
     function p = gsepwl(t, B, alpha, beta, k)
                     % a is fraction of Bpp used, 1 - a is fraction of original
         a = 1.0;    % a=1 for iGSE
@@ -176,12 +177,18 @@ function y = corelossEdit(tvs, B, alpha, beta, k, suppressFlag)
                     minorLoopTimes{idxMinorLoop, 1} = [minorLoopTimes{idxMinorLoop, 1}, tShift(idxBmod - 1)];
                 end
 
-                % Repeating the process till the minor loop ends
-                while Bmod(idxBmod) < max(majorVals)
-                    minorLoopVals{idxMinorLoop, 1} = [minorLoopVals{idxMinorLoop, 1}, Bmod(idxBmod)];
-                    minorLoopTimes{idxMinorLoop, 1} = [minorLoopTimes{idxMinorLoop, 1}, tShift(idxBmod)];
-                    idxBmod = idxBmod + 1;
-                end
+                % R. Scott Mongrain - vectorization
+                idxMajorMax = find(Bmod(idxBmod:end) >= max(majorVals), 1) + idxBmod - 1;
+                minorLoopVals{idxMinorLoop, 1} = [minorLoopVals{idxMinorLoop, 1}, Bmod(idxBmod:idxMajorMax - 1)];
+                minorLoopTimes{idxMinorLoop, 1} = [minorLoopTimes{idxMinorLoop, 1}, tShift(idxBmod:idxMajorMax - 1)'];
+                idxBmod = idxMajorMax;
+                
+%                 % Repeating the process till the minor loop ends
+%                 while Bmod(idxBmod) < max(majorVals)
+%                     minorLoopVals{idxMinorLoop, 1} = [minorLoopVals{idxMinorLoop, 1}, Bmod(idxBmod)];
+%                     minorLoopTimes{idxMinorLoop, 1} = [minorLoopTimes{idxMinorLoop, 1}, tShift(idxBmod)];
+%                     idxBmod = idxBmod + 1;
+%                 end
 
                 % Calculating the slope of the rising edge of the minor loop.
                 slope = (Bmod(idxBmod - 1) - Bmod(idxBmod))/(tShift(idxBmod - 1) - tShift(idxBmod)); 
@@ -225,12 +232,18 @@ function y = corelossEdit(tvs, B, alpha, beta, k, suppressFlag)
                 
                 isMinLoop = 1;  % Binary flag indicating minor loop, added by Jens Czogalla
 
-                while idxBmod <= length(Bmod) && Bmod(idxBmod) > temp
-                    minorLoopVals{idxMinorLoop, 1} = [minorLoopVals{idxMinorLoop, 1}, Bmod(idxBmod)];
-                    minorLoopTimes{idxMinorLoop, 1} = [minorLoopTimes{idxMinorLoop, 1}, tShift(idxBmod)];
-                    isMinLoop = 1;
-                    idxBmod = idxBmod + 1;
-                end   
+                idxLastGT = find(Bmod(idxBmod:end) <= temp, 1) + idxBmod - 1;
+                idxEndPoint = min(length(Bmod), idxLastGT);
+                minorLoopVals{idxMinorLoop, 1} = [minorLoopVals{idxMinorLoop, 1}, Bmod(idxBmod:idxEndPoint)];
+                minorLoopTimes{idxMinorLoop, 1} = [minorLoopTimes{idxMinorLoop, 1}, tShift(idxBmod:idxEndPoint)'];
+                idxBmod = idxEndPoint;
+                
+%                 while idxBmod <= length(Bmod) && Bmod(idxBmod) > temp
+%                     minorLoopVals{idxMinorLoop, 1} = [minorLoopVals{idxMinorLoop, 1}, Bmod(idxBmod)];
+%                     minorLoopTimes{idxMinorLoop, 1} = [minorLoopTimes{idxMinorLoop, 1}, tShift(idxBmod)];
+%                     isMinLoop = 1;
+%                     idxBmod = idxBmod + 1;
+%                 end
 
                 % Repeating the process till the minor loop ends
                 % by Jens Czogalla
@@ -284,7 +297,7 @@ function y = corelossEdit(tvs, B, alpha, beta, k, suppressFlag)
             curMinLoop = minorLoopVals{curLoop};	% flux
             curMinTimes = minorLoopTimes{curLoop};	% time
             
-            % force column vector
+            % R. Scott Mongrain - force column vector for consistency
             if size(curMinTimes, 2) > size(curMinTimes, 1)
                 curMinTimes = curMinTimes';
             end

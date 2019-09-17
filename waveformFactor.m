@@ -22,7 +22,7 @@ function Kf = waveformFactor(v, t, symmetric)
     % find max
     [phiMax, idx2] = max(phi(:));
     
-    % find first zero-crossing
+    % find first zero-crossing and rising cycle after it
     idx1 = find(abs(phi) <= phiMax/10, 1);
     [~, idx1] = min(abs(phi(1:idx1 + 256)));
     
