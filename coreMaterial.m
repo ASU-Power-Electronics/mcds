@@ -1,10 +1,12 @@
 %% coreMaterial
 % Selects power-oriented ferrite for transformer design by switching frequency;
 % offers option for manual material selection by use of mode input.
+%TODO: make material selection on something other than max permeability
 
 function material = coreMaterial(f)
     % Table of materials used (Ferroxcube)
     % material	mu_i	B_sat	T_c	rho	ferriteType	f_1	f_2  f_c
+    % 3C85      2000    400     200 2   MnZn        0   2e5  1e5
     % 3C90      2300	470     220	5	MnZn        0	2e5  1e5
     % 3C92      1500	520     280	5	MnZn        0	2e5  1e5
     % 3C91      3000	470     220	5	MnZn        0	3e5  15e4
@@ -48,10 +50,10 @@ function material = coreMaterial(f)
                     [~, c] = find(fDist <= fMinDist); % determine indices of minima
                     muVec = zeros(1, length(c));
 
-                    for i = 1:length(c) % iterate through options to populate
-                        material.opts(i) = Materials(c(i));
-                        material.opts(i);
-                        muVec(i) = Materials(c(i)).mu_i;
+                    for opt = 1:length(c) % iterate through options to populate
+                        material.opts(opt) = Materials(c(opt));
+                        material.opts(opt);
+                        muVec(opt) = Materials(c(opt)).mu_i;
                     end
 
                     [~, idx] = max(muVec);
@@ -70,6 +72,7 @@ function material = coreMaterial(f)
                 while isequal(answer, {})
                     [Selection, ok] = listdlg('ListString', ...
                                               {'Add New', ...
+                                               '3C85', ...
                                                '3C90', ...
                                                '3C92', ...
                                                '3C91', ...

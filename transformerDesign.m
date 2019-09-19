@@ -31,6 +31,7 @@
 % * - Attach to PLECS via simulink blockset for faster iterations
 % * - Investigate *webread* for scraping HTML
 % * - https://blogs.mathworks.com/loren/2017/07/10/web-scraping-and-mining-unstructured-data-with-matlab/
+% * - Better file system interface
 % * - TODO's
 % * *Testing*
 % * - Compare number of iterations, tic/toc, etc. for this, direct A_p, and
@@ -106,6 +107,7 @@ Transformer = struct('core', struct,...
 % * $V_o$:  nominal converter output voltage in [V]
 % * $P_o$:  nominal converter output power in [W]
 % * $f_s$:  converter switching frequency in [Hz]
+%TODO: better file system interface starts here
 
 button = questdlg('Create new converter or use existing?', ...
                   'Converter Selection', ...
@@ -251,6 +253,7 @@ clear FileName PathName ptemp stemp tVec this getString
 % NOTE:  Material selection is almost exclusively frequency-based for a given
 % application.  Saturation flux density and inductance per turn are malleable,
 % since they depend on shape, so we can proceed immediately and without regret.
+%TODO: make better selection among similar options in coreMaterial.m
 
 Transformer.core.material = coreMaterial(Converter.f_s);
 Transformer.core.name = 'None';
@@ -1091,19 +1094,31 @@ end
 fprintf('\nPeak Magnetic Flux Density (T):  %g\n', thisP.B_pk)
 fprintf('Peak Current Density (A/mm^2):  %g\n', thisP.J_pk*1e-6)
 
-% get Steinmetz parameters (approximate linearly if needed...)
+% get Steinmetz parameters
+%TODO: handle f_eff for multi-frequency situation
+%TODO: model temperature dependence of k (i.e. k_T = k*(k2*T^2 + k1*T + k0))
 SteinmetzOpts = thisR.material.main.Steinmetz;
 freqs = [SteinmetzOpts.f];
-[~, idx] = min(abs(freqs - thisC.f_s));
 
-if numel(idx) > 1
-    alpha = mean([SteinmetzOpts(idx).alpha]);
-    beta = mean([SteinmetzOpts(idx).beta]);
-    k = mean([SteinmetzOpts(idx).k]);
+if any(isequal(abs(freqs - thisC.f_s), 0))
+    [~, opt] = min(abs(freqs - thisC.f_s));
+    alpha = SteinmetzOpts(opt).alpha;
+    beta = SteinmetzOpts(opt).beta;
+    k = SteinmetzOpts(opt).k;
 else
-    alpha = SteinmetzOpts(idx).alpha;
-    beta = SteinmetzOpts(idx).beta;
-    k = SteinmetzOpts(idx).k;
+    alpha = SteinmetzOpts(numel(freqs)).alpha;
+    beta = SteinmetzOpts(numel(freqs)).beta;
+    k = SteinmetzOpts(numel(freqs)).k;
+end
+
+% assign appropriate coefficients based on B_pk and f by taking the max "loss"
+if numel(alpha) > 1
+    Bpk = thisP.B_pk;
+    f = thisC.f_s;
+    [~, idx] = max(k.*f.^alpha.*Bpk.^beta);
+    alpha = alpha(idx);
+    beta = beta(idx);
+    k = k(idx);
 end
 
 % calculate core losses (coreloss.m will do this with iGSE given a B waveform)
