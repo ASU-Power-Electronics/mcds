@@ -6,6 +6,7 @@
 % diamater for round center legs, and window height + center leg distance for
 % rectangular cores in both x and y directions, for 4 segments equalling one
 % full turn passing through the center of the window.
+%TODO: find existing core if name/params are the same and edit
 
 function Core = selectCore(Core, Properties)
     material = Core.material; % placeholder

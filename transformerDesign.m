@@ -441,6 +441,7 @@ clear temp thisC thisT Kg
 % * $A_p$: area product (available from data sheet if former/bobbin exists) in
 % [m^4]
 % * $MLT$: mean-length turn (including former/bobbin) in [m]
+%TODO: find existing core if name/params are the same and edit in selectCore.m
 
 thisC = Transformer.core;
 thisP = Transformer.properties;
@@ -534,8 +535,8 @@ clear thisC thisP thisW r h b N nwp nws selectCore
 % the winding current to the RMS value of that current, all divided by 2*pi.
 % This allows the calculation of the skin depth to which the current will
 % permeate the wire.  Thus, to homogenize the current distribution as much as
-% possible, we desire a bundle radius of no greater than 1.5 skin depths, and a
-% strand diameter of about 1/4 of a skin depth.
+% possible, we desire a bundle radius of no greater than 1.5 skin depths (in 
+% Type I litz), and a strand diameter of about 1/4 of a skin depth.
 % 
 % * $f_{eff, p}$:  primary winding effective frequency in [Hz]
 % * $\delta_{p}$:  primary winding skin depth in [m]
