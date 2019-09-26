@@ -3,7 +3,7 @@
 
 function T = makeConsTable(T, cons)
     nRows = size(cons, 2);
-    varNames = {'Bundle_AWG', 'Bundles_per_Layer'};
+    varNames = {'Bundle_AWG', 'Bundles_per_Layer', 'Parallel_Wire_Bundles'};
     rowNames = cell(1, nRows);
 
     for row = 1:nRows
@@ -12,13 +12,13 @@ function T = makeConsTable(T, cons)
     end
        
     if isempty(T)        
-        T = table([cons(:).AWG_e]', [cons(:).N_bpl]', ...
+        T = table([cons(:).AWG_e]', [cons(:).N_bpl]', [cons(:).N_pw]', ...
                   'VariableNames', varNames, ...
                   'RowNames', rowNames);
     else
-        Tadd = table([cons(:).AWG_e]', [cons(:).N_bpl]', ...
+        Tadd = table([cons(:).AWG_e]', [cons(:).N_bpl]', [cons(:).N_pw]', ...
                      'VariableNames', varNames, ...
                      'RowNames', rowNames);
-        T = [T; Tadd];
+        T = union(T, Tadd);
     end
 end

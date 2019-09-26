@@ -162,44 +162,44 @@ clear button
 % N = ceil(V_RMS/(K_f*f*B_sat*Ae)); will likely need to defer until later
 % with phi_pk = Ae*B_pk, we can approximate as early as waveform import
 
-answer = inputdlg({'Number of primary windings', ...
-                   'Number of turns in each primary winding (comma-separated)', ...
-                   'Number of secondary windings', ...
-                   'Number of turns in each secondary winding (comma-separated)'}, ...
-                  'Transformer Windings and Turns', ...
-                  1, ...
-                  {'1', '1', '1', '1'});
-
-thisW = Transformer.winding;
-thisP = Transformer.properties;
-pWindings = str2double(answer{1});
-pTurns = str2num(answer{2}); % possibly non-scalar, using num instead of double
-sWindings = str2double(answer{3});
-sTurns = str2num(answer{4});
-
-thisP.N_wp = pWindings;
-thisP.N_ws = sWindings;
-thisP.N_w = pWindings + sWindings;
-
-if pWindings > 1
-    for i = 1:pWindings
-        thisW.primary(i).N = pTurns(i);
-    end
-else
-    thisW.primary.N = pTurns;
-end
-
-if sWindings > 1
-    for i = 1:sWindings
-        thisW.secondary(i).N = sTurns(i);
-    end
-else
-    thisW.secondary.N = sTurns;
-end
-
-Transformer.winding = orderfields(thisW);
-Transformer.properties = orderfields(thisP);
-clear thisW thisP answer pWindings pTurns sWindings sTurns
+% answer = inputdlg({'Number of primary windings', ...
+%                    'Number of turns in each primary winding (comma-separated)', ...
+%                    'Number of secondary windings', ...
+%                    'Number of turns in each secondary winding (comma-separated)'}, ...
+%                   'Transformer Windings and Turns', ...
+%                   1, ...
+%                   {'1', '1', '1', '1'});
+% 
+% thisW = Transformer.winding;
+% thisP = Transformer.properties;
+% pWindings = str2double(answer{1});
+% pTurns = str2num(answer{2}); % possibly non-scalar, using num instead of double
+% sWindings = str2double(answer{3});
+% sTurns = str2num(answer{4});
+% 
+% thisP.N_wp = pWindings;
+% thisP.N_ws = sWindings;
+% thisP.N_w = pWindings + sWindings;
+% 
+% if pWindings > 1
+%     for p = 1:pWindings
+%         thisW.primary(p).N = pTurns(p);
+%     end
+% else
+%     thisW.primary.N = pTurns;
+% end
+% 
+% if sWindings > 1
+%     for s = 1:sWindings
+%         thisW.secondary(s).N = sTurns(s);
+%     end
+% else
+%     thisW.secondary.N = sTurns;
+% end
+% 
+% Transformer.winding = orderfields(thisW);
+% Transformer.properties = orderfields(thisP);
+% clear thisW thisP answer pWindings pTurns sWindings sTurns p s
 
 %%
 % *Initial Transformer Waveforms*
@@ -237,6 +237,13 @@ tVec = ptemp(:, 1) - ptemp(1, 1);
 getString = 'Select secondary winding voltage and current waveform file';
 [FileName, PathName] = uigetfile('.csv', getString);
 stemp = csvread([PathName, FileName], 1, 1); % exclude time vector
+
+Transformer.properties.N_wp = (size(ptemp, 2) - 1)/2;
+Transformer.properties.N_ws = size(stemp, 2)/2;
+Transformer.properties.N_w = Transformer.properties.N_wp + Transformer.properties.N_ws;
+
+this.primary(1:Transformer.properties.N_wp) = struct();
+this.secondary(1:Transformer.properties.N_ws) = struct();
 
 if isequal(Converter.f_0, 0)
     [Time, this] = distributeWindingWaveforms(this, ptemp, stemp, tVec, Time, Converter.f_s);
@@ -295,22 +302,6 @@ thisW = Transformer.winding;
 thisP = Transformer.properties;
 
 %%
-% *Converter Calculated Parameters*
-%
-% * $n$:  transformer turns ratio
-% * $I_o$:  nominal CCA converter output current in [A]
-% * $T_s$:  converter switching period in [s]
-
-if numel([thisW.secondary(:).N]) > 1
-    thisC.n = thisW.secondary(1).N/thisW.primary.N;
-else
-    thisC.n = thisW.secondary.N/thisW.primary.N;
-end
-
-thisC.I_o = thisC.P_o/thisC.V_o;
-thisC.T_s = 1/thisC.f_s;
-
-%%
 % *Winding Calculated Parameters*
 % 
 % In this section, the apparent power, RMS current, and the RMS value of the
@@ -318,9 +309,9 @@ thisC.T_s = 1/thisC.f_s;
 % calculated by extracting any non-zero mean (the DC component), and shifting
 % the AC waveform to compute I_RMS = sqrt(I_DC^2 + I_ACRMS^2).  The derivative
 % of the current is approximated by a finite difference and its RMS value is
-% computed using MATLAB's built-in rms() function.  The RMS value of the voltage
-% is computed in the same way.  In the case of low-frequency oscillation, the
-% RMS values are computed using the low-frequency RMS in place of the DC value.
+% also computed.  The RMS value of the voltage is computed in the same way.  In
+% the case of low-frequency oscillation, the RMS values are computed using the
+% low-frequency RMS in place of the DC value.
 % 
 % * $P_p$:  primary VA rating in [W]
 % * $P_s$:  secondary VA rating in [W]
@@ -332,6 +323,22 @@ thisC.T_s = 1/thisC.f_s;
 
 LF = thisC.f_0 > 0;
 [thisP, thisW] = analyzeWindingWaveforms(thisP, thisW, LF, Time);
+
+%%
+% *Converter Calculated Parameters*
+%
+% * $n$:  transformer turns ratio (matrix if multi-winding)
+% * $I_o$:  nominal CCA converter output current in [A]
+% * $T_s$:  converter switching period in [s]
+
+for p = 1:thisP.N_wp
+    for s = 1:thisP.N_ws
+        thisC.n(p, s) = thisW.secondary(s).V_sRMS/thisW.primary(p).V_pRMS;
+    end
+end
+
+thisC.I_o = thisC.P_o/thisC.V_o;
+thisC.T_s = 1/thisC.f_s;
 
 % alias set block
 Converter = orderfields(thisC);
@@ -427,6 +434,8 @@ clear temp thisC thisT Kg
 % From these values we can immediately calculate:
 % 
 % * $\mathcal{R}$: core reluctance in [H^{-1}]
+% * $N_{pn}$: primary n number of turns
+% * $N_{sn}$: secondary n number of turns
 % * $\phi(t)$: instantaneous magnetic flux waveform
 % * $B(t)$: instantaneous magnetic flux density waveform
 % * $B_{pk}$: peak magnetic flux in [T]
@@ -456,13 +465,20 @@ fprintf('Core selected: %s\n\n', thisC.name)
 nwp = thisP.N_wp;
 nws = thisP.N_ws;
 
-% calculate flux from primary winding voltage(s)
+for p = 1:nwp
+    thisW.primary(p).N = ceil(thisW.primary(p).V_pRMS/(thisP.K_f*Converter.f_s*thisC.material.main.B_sat*thisC.A_e));
+end
+
+for s = 1:nws
+    thisW.secondary(s).N = ceil(thisW.primary(1).N*Converter.n(1, s));
+end
+
+% calculate flux from primary winding voltage
+% assume valid transformer config (i.e. multiple primaries have same V/turn)
 if nwp > 1
     thisW.phi = zeros(size(thisW.primary(1).waveform.v_p));
-    for idx = 1:nwp
-        N = thisW.primary(idx).N;
-        thisW.phi = thisW.phi + calculateFlux(thisW.primary(idx).waveform.v_p/N, Time.t);
-    end
+    N = thisW.primary(1).N;
+    thisW.phi = calculateFlux(thisW.primary(1).waveform.v_p/N, Time.t);
 else
     N = thisW.primary.N;
     thisW.phi = calculateFlux(thisW.primary.waveform.v_p/N, Time.t);
@@ -582,7 +598,6 @@ else
 end
 
 % compute wire size guidelines and report
-%TODO: Need to include possibility for parallel wires for large J_pk.
 %TODO: Should save options...
 b = Transformer.core.bobbin.breadth;
 h = Transformer.core.bobbin.height;
@@ -812,7 +827,7 @@ disp(currentTempTable)
 Transformer.winding.primary = orderfields(thisP);
 Transformer.winding.secondary = orderfields(thisS);
 clear thisP thisS
-clear time tkeep idxkeep t w idx I vectorLength
+clear time tkeep idxkeep t w idx I iwf diwf vectorLength
 clear tableNames currentTempTable
 
 %%
@@ -845,13 +860,11 @@ clear tableNames currentTempTable
 % outer diameter.  The secondary windings are dependent on number of turns and
 % outer diameter of both windings for their position information.
 %TODO: compute eta in litzOptWrapper
+%TODO: allow user to select one of the options
 
 Transformer = litzOptWrapper(Transformer, Time);
 
-%TODO: allow user to select one of the options
-%TODO: fix inter-winding space for interleaved windings in arrangeWindings
 % for now, enter results in the provided input dialog:
-
 Transformer.winding = constructWinding(Transformer);
 
 %%
@@ -957,14 +970,10 @@ passKg = logical(thisP.K_g > thisP.K_gMin);
 thisP.A_pMin = thisC.A_e*thisP.W_aMin;
 passAp = logical(thisP.A_p > thisP.A_pMin);
 
-% check peak magnetic field strength against saturation value
-passBsat = logical(thisP.B_pk < thisC.material.main.B_sat);
-
 fprintf('\nConsistency Checks:\n')
 fprintf('Core has sufficient window area:  %d\n', passWa)
 fprintf('Core meets K_g requirement:  %d\n', passKg)
 fprintf('Core meets A_p requirement:  %d\n', passAp)
-fprintf('Core meets B_sat requirement:  %d\n', passBsat)
 
 Transformer.core = orderfields(thisC);
 Transformer.winding = orderfields(thisW);
@@ -990,8 +999,7 @@ clear thisC thisW thisP
 %TODO: add state space model calculation
 %TODO: add support for different types of windings and also calculate porosity
 %      in windingResistance
-%TODO: double-check current density calculations... think iRMS -> ipk
-%TODO: do better than linear approximation for Steinmetz coefficients
+%TODO: Implement simple thermal model (Kazimierczuk 464-465)
 
 thisC = Converter;
 thisR = Transformer.core;
@@ -1024,8 +1032,10 @@ if nwp > 1
         thisW.i_m = thisW.i_m + I;
         vLl = thisW.primary(idx).waveform.di_pdt*thisW.primary(idx).Ll;
         vr = thisW.primary(idx).R*I;
-        vLmPri = vLmPri + (thisW.primary(Idx).waveform.v_p - vLl - vr)/thisW.primary(idx).N;
+        vLmPri = vLmPri + (thisW.primary(idx).waveform.v_p - vLl - vr)/thisW.primary(idx).N;
     end
+    
+    vLmPri = vLmPri/nwp;
 else
     thisW.i_m = thisW.i_m + thisW.primary.waveform.i_p;
     vLl = thisW.primary.waveform.di_pdt*thisW.primary.Ll;
@@ -1042,6 +1052,8 @@ if nws > 1
         vr = thisW.secondary(idx).R*I;
         vLmSec = vLmSec + (thisW.secondary(idx).waveform.v_s + vLl + vr)/N;
     end
+    
+    vLmSec = vLmSec/nws;
 else
     thisW.i_m = thisW.i_m - thisW.secondary.N*thisW.secondary.waveform.i_s;
     vLl = thisW.secondary.waveform.di_sdt*thisW.secondary.Ll;
@@ -1056,6 +1068,10 @@ thisR.MMF = thisR.phi*thisR.R;
 thisR.B = thisR.phi./thisR.A_e;
 thisP.B_pk = max(abs(thisR.B));
 
+% check peak magnetic field strength against saturation value
+passBsat = logical(thisP.B_pk < thisR.material.main.B_sat);
+fprintf('Core meets B_sat requirement:  %d\n', passBsat)
+
 % Window peak current density formulation based on McLyman, Hurley/Wolfle
 if thisC.f_0 > 0
     thisP.J_pk = thisP.P_tHF/(thisP.K_fs*thisC.f_s*thisP.K_u*thisP.A_p*thisP.B_pk);
@@ -1064,31 +1080,32 @@ else
 end
 
 % current density safety checks
-passJ = logical(thisP.J_pk < J_MAX);
+% includes per-unit diameter surface-to-volume ratio increase 4/d
+passJ = logical(thisP.J_pk < J_MAX*4);
 
 fprintf('Window peak current density is within safety limit: %d\n', passJ)
 
 if nwp > 1
     for idx = 1:nwp
         thisW.primary(idx).J = thisW.primary(idx).I_pRMS/thisW.primary(idx).A_Cu;
-        passJ = logical(thisW.primary(idx).J < J_MAX);
+        passJ = logical(thisW.primary(idx).J < J_MAX*4);
         fprintf('Primary winding %d can support current density:  %d\n', idx, passJ)
     end
 else
     thisW.primary.J = thisW.primary.I_pRMS/thisW.primary.A_Cu;
-    passJ = logical(thisW.primary.J < J_MAX);
+    passJ = logical(thisW.primary.J < J_MAX*4);
     fprintf('Primary winding can support current density:  %d\n', passJ)
 end
 
 if nws > 1
     for idx = 1:nws
         thisW.secondary(idx).J = thisW.secondary(idx).I_sRMS/thisW.secondary(idx).A_Cu;
-        passJ = logical(thisW.secondary(idx).J < J_MAX);
+        passJ = logical(thisW.secondary(idx).J < J_MAX*4);
         fprintf('Secondary winding %d can support current density:  %d\n', idx, passJ)
     end
 else
     thisW.secondary.J = thisW.secondary.I_sRMS/thisW.secondary.A_Cu;
-    passJ = logical(thisW.secondary.J < J_MAX);
+    passJ = logical(thisW.secondary.J < J_MAX*4);
     fprintf('Secondary winding can support current density:  %d\n', passJ)
 end
 
@@ -1187,7 +1204,9 @@ Transformer.properties = orderfields(thisP);
 % - do this when any of the 4 consistence values fail, or if the loss is too
 % high, or if the change from iteration to iteration is unacceptable
 
-clear thisC thisR thisP thisW alpha beta k freqs vLmPri vLmSec vLl vr nwp nws idx SteinmetzOpts
+clear thisC thisR thisP thisW
+clear alpha beta k f freqs SteinmetzOpts N Bpk
+clear I vLmPri vLmSec vLl vr nwp nws idx
 
 %% Program Cleanup
 % Here we can save the current transformer to file for future iteration or ease

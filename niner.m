@@ -32,17 +32,17 @@ function [t, idx] = niner(t0, w0, wp0)
     
     t = t0(idx);
     w = w0(idx);
-    w0RMS = rms(w0(1:end - 1));
-    
-    figure
-    hold on
-    plot(t0, w0)
-    plot(t, w)
-    hold off
-    grid on
-    refline(0, w0RMS)
-    title('Ideal Winding Current Waveform & Linear Approximation')
-    xlabel('t (s)')
-    ylabel('i_w (A)')
-    legend('Ideal', 'PWL Approximation', 'RMS Value')
+%     w0RMS = rms(w0(1:end - 1));
+%     
+%     figure
+%     hold on
+%     plot(t0, w0)
+%     plot(t, w)
+%     hold off
+%     grid on
+%     refline(0, w0RMS)
+%     title('Ideal Winding Current Waveform & Linear Approximation')
+%     xlabel('t (s)')
+%     ylabel('i_w (A)')
+%     legend('Ideal', 'PWL Approximation', 'RMS Value')
 end

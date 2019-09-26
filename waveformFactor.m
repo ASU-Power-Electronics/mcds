@@ -1,6 +1,6 @@
 %% waveformFactor
-% Voltage waveform factor calculation.  v is turns-scaled, and symmetric is a
-% boolean value representing whether or not B is symmetric wrt to zero.
+% Voltage waveform factor calculation.  `v` is primary voltage, and symmetric is
+% a boolean value representing whether or not B is symmetric wrt to zero.
 
 function Kf = waveformFactor(v, t, symmetric)
     % compute flux to find zero-to-peak time

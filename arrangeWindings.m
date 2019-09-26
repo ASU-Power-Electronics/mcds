@@ -1,7 +1,6 @@
 %% arrangeWindings
 % Arranges windings in window.  Allows interleaving of windings, but only full
 % interleaving (PSPS...PS/SP), since it is most advantageous.
-% TODO: fix inter-winding space for interleaved windings
 
 function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
     N_Lp = 0;
@@ -43,10 +42,11 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
     end
 
     % check for round/rectangular cross-section and assign approx. initial diameter
-    if isequal(Core.d_center, Core.d_center2)
+    if strcmp(Core.c_leg_type, 'round')
         lastDiameter = Core.d_center + 2*(Core.window.height - Core.bobbin.height);
     else % rectangular
-        lastDiameter = 2*sqrt(Core.d_center*Core.d_center2/pi) + 2*(Core.window.height - Core.bobbin.height);
+        lastDiameter = sqrt(Core.d_center^2 + Core.d_center2^2) + 2*(Core.window.height - Core.bobbin.height);
+        theta = atan2(Core.d_center2, Core.d_center); % for similar triangle later
     end
 
     switch windingStructure
@@ -59,7 +59,16 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                         if bifMatch
                             bifMatch = 0;
                             thisP(idx).diameter = lastDiameter - thisP(idx - 1).d_o*thisP(idx - 1).N_L;
-                            thisP(idx).length = pi*thisP(idx).diameter*thisP(idx).N;
+                            
+                            % length of winding
+                            if strcmp(Core.c_leg_type, 'rectangular') % Pythagoras
+                                c = thisP(idx).diameter;
+                                a = c*cos(theta);
+                                b = c*sin(theta);
+                                thisP(idx).length = 2*(a + b)*thisP(idx).N;
+                            else
+                                thisP(idx).length = pi*thisP(idx).diameter*thisP(idx).N;
+                            end
                         else
                             bifMatch = 1;
                             % diameter at center of winding (for use in L calculations)
@@ -68,21 +77,44 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                             lastDiameter = thisP(idx).diameter + thisP(idx).d_o*thisP(idx).N_L;
                             % inter-winding space
                             lastDiameter = lastDiameter + Wgap;
-                            % length using MLT*N
-                            thisP(idx).length = pi*thisP(idx).diameter*thisP(idx).N;
+                            
+                            if strcmp(Core.c_leg_type, 'rectangular')
+                                c = thisP(idx).diameter;
+                                a = c*cos(theta);
+                                b = c*sin(theta);
+                                thisP(idx).length = 2*(a + b)*thisP(idx).N;
+                            else
+                                thisP(idx).length = pi*thisP(idx).diameter*thisP(idx).N;
+                            end
                         end
                     else
                         thisP(idx).diameter = lastDiameter + thisP(idx).d_o*thisP(idx).N_L;
                         lastDiameter = thisP(idx).diameter + thisP(idx).d_o*thisP(idx).N_L;
                         lastDiameter = lastDiameter + Wgap;
-                        thisP(idx).length = pi*thisP(idx).diameter*thisP(idx).N;
+                        
+                        if strcmp(Core.c_leg_type, 'rectangular')
+                            c = thisP(idx).diameter;
+                            a = c*cos(theta);
+                            b = c*sin(theta);
+                            thisP(idx).length = 2*(a + b)*thisP(idx).N;
+                        else
+                            thisP(idx).length = pi*thisP(idx).diameter*thisP(idx).N;
+                        end
                     end
                 end
-            else
+            else % single primary
                 thisP.diameter = lastDiameter + thisP.d_o*thisP.N_L;
                 lastDiameter = thisP.diameter + thisP.d_o*thisP.N_L;
                 lastDiameter = lastDiameter + Wgap;
-                thisP.length = pi*thisP.diameter*thisP.N;
+                
+                if strcmp(Core.c_leg_type, 'rectangular')
+                    c = thisP.diameter;
+                    a = c*cos(theta);
+                    b = c*sin(theta);
+                    thisP.length = 2*(a + b)*thisP.N;
+                else
+                    thisP.length = pi*thisP.diameter*thisP.N;
+                end
             end
 
             if nws > 1
@@ -93,7 +125,15 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                         if bifMatch
                             bifMatch = 0;
                             thisS(idx).diameter = lastDiameter - thisS(idx - 1).d_o*thisS(idx - 1).N_L;
-                            thisS(idx).length = pi*thisS(idx).diameter*thisS(idx).N;
+                
+                            if strcmp(Core.c_leg_type, 'rectangular')
+                                c = thisS(idx).diameter;
+                                a = c*cos(theta);
+                                b = c*sin(theta);
+                                thisS(idx).length = 2*(a + b)*thisS(idx).N;
+                            else
+                                thisS(idx).length = pi*thisS(idx).diameter*thisS(idx).N;
+                            end
                         else
                             bifMatch = 1;
                             thisS(idx).diameter = lastDiameter + thisS(idx).d_o*thisS(idx).N_L;
@@ -102,8 +142,15 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                             if idx < nws
                                 lastDiameter = lastDiameter + Wgap;
                             end
-                            
-                            thisS(idx).length = pi*thisS(idx).diameter*thisS(idx).N;
+                
+                            if strcmp(Core.c_leg_type, 'rectangular')
+                                c = thisS(idx).diameter;
+                                a = c*cos(theta);
+                                b = c*sin(theta);
+                                thisS(idx).length = 2*(a + b)*thisS(idx).N;
+                            else
+                                thisS(idx).length = pi*thisS(idx).diameter*thisS(idx).N;
+                            end
                         end
                     else
                         thisS(idx).diameter = lastDiameter + thisS(idx).d_o*thisS(idx).N_L;
@@ -112,19 +159,43 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                         if idx < nws
                             lastDiameter = lastDiameter + Wgap;
                         end
-                        
-                        thisS(idx).length = pi*thisS(idx).diameter*thisS(idx).N;
+                
+                        if strcmp(Core.c_leg_type, 'rectangular')
+                            c = thisS(idx).diameter;
+                            a = c*cos(theta);
+                            b = c*sin(theta);
+                            thisS(idx).length = 2*(a + b)*thisS(idx).N;
+                        else
+                            thisS(idx).length = pi*thisS(idx).diameter*thisS(idx).N;
+                        end
                     end
                 end
             else
                 thisS.diameter = lastDiameter + thisS.d_o*thisS.N_L;
                 lastDiameter = thisS.diameter + thisS.d_o*thisS.N_L;
-                thisS.length = pi*thisS.diameter*thisS.N;
+                
+                if strcmp(Core.c_leg_type, 'rectangular')
+                    c = thisS.diameter;
+                    a = c*cos(theta);
+                    b = c*sin(theta);
+                    thisS.length = 2*(a + b)*thisS.N;
+                else
+                    thisS.length = pi*thisS.diameter*thisS.N;
+                end
             end
             
             % quick check that winding height < window height
-            if ~(lastDiameter < Core.d_center + 2*Core.window.height)
-                warning('Windings exceed window height as arranged.')
+            if strcmp(Core.c_leg_type, 'round')
+                if ~(lastDiameter < Core.d_center + 2*Core.window.height)
+                    warning('Windings exceed window height as arranged.')
+                end
+            else
+                hWp = [thisP(:).N_L]'*[thisP(:).d_o];
+                hWs = [thisS(:).N_L]'*[thisS(:).d_o];
+                
+                if ~(hWp + hWs < Core.window.height)
+                    warning('Windings exceed window height as arranged.')
+                end
             end
         case 'Interleaved' % alternating concentric (PSPS...PS/SP)
             lastPS = 'S'; % always start with primary (higher power due to loss)
@@ -146,14 +217,22 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                                 lastDiameter = lastDiameter + 2*thisP(pIDX).d_o;
                             else
                                 d_Pout = lastDiameter + 2*thisP(pIDX).d_o;
-                                lastDiameter = d_Pout;
+                                lastDiameter = d_Pout + Wgap;
                                 thisP(pIDX).diameter = (d_Pin + d_Pout)/2;
-                                thisP(pIDX).length = pi*thisP(pIDX).diameter*thisP(pIDX).N;
+                
+                                if strcmp(Core.c_leg_type, 'rectangular')
+                                    c = thisP(pIDX).diameter;
+                                    a = c*cos(theta);
+                                    b = c*sin(theta);
+                                    thisP(pIDX).length = 2*(a + b)*thisP(pIDX).N;
+                                else
+                                    thisP(pIDX).length = pi*thisP(pIDX).diameter*thisP(pIDX).N;
+                                end
                                 
                                 if isequal(thisP(pIDX).bifilar, 2)
-                                    pIDX = pIDX + 2;
                                     thisP(pIDX + 1).diameter = thisP(pIDX).diameter;
                                     thisP(pIDX + 1).length = thisP(pIDX).length;
+                                    pIDX = pIDX + 2;
                                 else
                                     pIDX = pIDX + 1;
                                 end
@@ -169,9 +248,17 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                                 lastDiameter = lastDiameter + 2*thisP.d_o;
                             else
                                 d_Pout = lastDiameter + 2*thisP.d_o;
-                                lastDiameter = d_Pout;
+                                lastDiameter = d_Pout + Wgap;
                                 thisP.diameter = (d_Pin + d_Pout)/2;
-                                thisP.length = pi*thisP.diameter*thisP.N;
+                
+                                if strcmp(Core.c_leg_type, 'rectangular')
+                                    c = thisP.diameter;
+                                    a = c*cos(theta);
+                                    b = c*sin(theta);
+                                    thisP.length = 2*(a + b)*thisP.N;
+                                else
+                                    thisP.length = pi*thisP.diameter*thisP.N;
+                                end
                             end
                         end
                         
@@ -186,14 +273,23 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                                 lastDiameter = lastDiameter + 2*thisS(sIDX).d_o;
                             else
                                 d_Sout = lastDiameter + 2*thisS(sIDX).d_o;
-                                lastDiameter = d_Sout;
+                                lastDiameter = d_Sout + Wgap;
                                 thisS(sIDX).diameter = (d_Sin + d_Sout)/2;
                                 thisS(sIDX).length = pi*thisS(sIDX).diameter*thisS(sIDX).N;
+                
+                                if strcmp(Core.c_leg_type, 'rectangular')
+                                    c = thisS(sIDX).diameter;
+                                    a = c*cos(theta);
+                                    b = c*sin(theta);
+                                    thisS(sIDX).length = 2*(a + b)*thisS(sIDX).N;
+                                else
+                                    thisS(sIDX).length = pi*thisS(sIDX).diameter*thisS(sIDX).N;
+                                end
                                 
                                 if isequal(thisS(sIDX).bifilar, 2)
-                                    sIDX = sIDX + 2;
                                     thisS(sIDX + 1).diameter = thisS(sIDX).diameter;
                                     thisS(sIDX + 1).length = thisS(sIDX).length;
+                                    sIDX = sIDX + 2;
                                 else
                                     sIDX = sIDX + 1;
                                 end
@@ -209,9 +305,17 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                                 lastDiameter = lastDiameter + 2*thisS.d_o;
                             else
                                 d_Sout = lastDiameter + 2*thisS.d_o;
-                                lastDiameter = d_Sout;
-                                thisP.diameter = (d_Pin + d_Pout)/2;
-                                thisP.length = pi*thisP.diameter*thisP.N;
+                                lastDiameter = d_Sout + Wgap;
+                                thisS.diameter = (d_Pin + d_Pout)/2;
+                
+                                if strcmp(Core.c_leg_type, 'rectangular')
+                                    c = thisS.diameter;
+                                    a = c*cos(theta);
+                                    b = c*sin(theta);
+                                    thisS.length = 2*(a + b)*thisS.N;
+                                else
+                                    thisS.length = pi*thisS.diameter*thisS.N;
+                                end
                             end
                         end
                         
@@ -220,8 +324,17 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
             end
             
             % quick check that winding height < window height
-            if ~(lastDiameter < Core.d_center + 2*Core.window.height)
-                warning('Windings exceed window height as arranged.')
+            if strcmp(Core.c_leg_type, 'round')
+                if ~(lastDiameter < Core.d_center + 2*Core.window.height)
+                    warning('Windings exceed window height as arranged.')
+                end
+            else
+                hWp = [thisP(:).N_L]'*[thisP(:).d_o];
+                hWs = [thisS(:).N_L]'*[thisS(:).d_o];
+                
+                if ~(hWp + hWs < Core.window.height)
+                    warning('Windings exceed window height as arranged.')
+                end
             end
     end
 end

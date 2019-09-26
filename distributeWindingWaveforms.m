@@ -11,8 +11,10 @@
 function [T, Winding] = distributeWindingWaveforms(Winding, ptemp, stemp, tVec, T, f_s)
     thisP = Winding.primary;
     thisS = Winding.secondary;
-    [~, nwp] = size(thisP);
-    [~, nws] = size(thisS);
+    nwp = (size(ptemp, 2) - 1)/2;
+    nws = size(stemp, 2)/2;
+%     [~, nwp] = size(thisP);
+%     [~, nws] = size(thisS);
     time = linspace(0, 1/f_s, 1025);
     dt = time(2) - time(1);
     

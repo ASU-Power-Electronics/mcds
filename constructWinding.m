@@ -1,7 +1,6 @@
 %% constructWinding
 % Constructs a transformer winding, calculating layer geometry using selected
 % wires.
-%TODO: fix inter-winding space for interleaved windings in arrangeWindings
 
 function Winding = constructWinding(Transformer)
     Winding = Transformer.winding;
@@ -191,37 +190,109 @@ function Winding = constructWinding(Transformer)
     clear isDirectPairing isNearDirectPair isOverallPairing isNearOverallPair
     clear isEligibleForInterleave
 
-    % fun plot of core and winding geometry; basic validation of feasibility,
-    % though for rectangular center legs, it can get a bit wonky
-    coreRadius = sqrt(Core.A_e/pi);
-    figure;
-    polarplot(0:pi/180:2*pi, coreRadius*ones(1, 361));
-    hold on;
+    % fun plot of core and winding geometry; basic validation of feasibility
+    if strcmp(Core.c_leg_type, 'round')
+        coreRadius = sqrt(Core.A_e/pi);
+        figure
+        polarplot(0:pi/180:2*pi, coreRadius*ones(1, 361), 'LineWidth', 2, 'Color', 'k');
+        hold on;
 
-    if nwp > 1
-        for idx = 1:nwp
-            r = Winding.primary(idx).diameter/2;
+        if nwp > 1
+            for idx = 1:nwp
+                r = Winding.primary(idx).diameter/2;
+                polarplot(0:pi/180:2*pi, r*ones(1, 361));
+            end
+        else
+            r = Winding.primary.diameter/2;
             polarplot(0:pi/180:2*pi, r*ones(1, 361));
         end
-    else
-        r = Winding.primary.diameter/2;
-        polarplot(0:pi/180:2*pi, r*ones(1, 361));
-    end
 
-    if nws > 1
-        for idx = 1:nws
-            r = Winding.secondary(idx).diameter/2;
+        if nws > 1
+            for idx = 1:nws
+                r = Winding.secondary(idx).diameter/2;
+                polarplot(0:pi/180:2*pi, r*ones(1, 361));
+            end
+        else
+            r = Winding.secondary.diameter/2;
             polarplot(0:pi/180:2*pi, r*ones(1, 361));
         end
-    else
-        r = Winding.secondary.diameter/2;
-        polarplot(0:pi/180:2*pi, r*ones(1, 361));
-    end
 
-    outerRadius = Core.window.height + Core.d_center/2;
-    polarplot(0:pi/180:2*pi, outerRadius*ones(1, 361));
+        outerRadius = Core.window.height + Core.d_center/2;
+        polarplot(0:pi/180:2*pi, outerRadius*ones(1, 361), 'LineWidth', 2, 'Color', 'k');
+    else
+        tBobbin = Core.window.height - Core.bobbin.height;
+        hC = Core.d_center + tBobbin; % center leg height w/ bobbin (x)
+        dC = Core.d_center2 + tBobbin; % center leg depth w/ bobbin (z)
+        offsetX = hC/2;
+        offsetY = dC/2;
+        bifpair = false;
+        
+        figure
+        rectangle('Position', [-offsetX, -offsetY, hC, dC], 'LineWidth', 2, 'EdgeColor', 'k')
+        hold on
+        
+        if nwp > 1
+            for idx = 1:nwp
+                hW = Winding.primary(idx).N_L*Winding.primary(idx).d_o;
+                rectangle('Position', [-offsetX - hW/2, -offsetY - hW/2, 2*offsetX + hW, 2*offsetY + hW], 'Curvature', 0.2)
+                
+                if isequal(Winding.primary(idx).bifilar, 2)
+                    if bifpair
+                        bifpair = false;
+                        offsetX = offsetX + hW/2;
+                        offsetY = offsetY + hW/2;
+                    else
+                        bifpair = true;
+                    end
+                else
+                    offsetX = offsetX + hW/2;
+                    offsetY = offsetY + hW/2;
+                end
+            end
+        else
+            hW = Winding.primary.N_L*Winding.primary.d_o;
+            rectangle('Position', [-offsetX - hW/2, -offsetY - hW/2, 2*offsetX + hW, 2*offsetY + hW], 'Curvature', 0.2)
+                
+            if isequal(Winding.primary.bifilar, 2)
+                bifpair = true;
+            else
+                offsetX = offsetX + hW/2;
+                offsetY = offsetY + hW/2;
+            end
+        end
+        
+        if nws > 1
+            for idx = 1:nws
+                hW = Winding.secondary(idx).N_L*Winding.secondary(idx).d_o;
+                rectangle('Position', [-offsetX - hW/2, -offsetY - hW/2, 2*offsetX + hW, 2*offsetY + hW], 'Curvature', 0.2)
+                
+                if isequal(Winding.primary(idx).bifilar, 2)
+                    if bifpair
+                        bifpair = false;
+                        offsetX = offsetX + hW/2;
+                        offsetY = offsetY + hW/2;
+                    else
+                        bifpair = true;
+                    end
+                else
+                    offsetX = offsetX + hW/2;
+                    offsetY = offsetY + hW/2;
+                end
+            end
+        else
+            hW = Winding.secondary.N_L*Winding.secondary.d_o;
+            rectangle('Position', [-offsetX - hW/2, -offsetY - hW/2, 2*offsetX + hW, 2*offsetY + hW], 'Curvature', 0.2)
+        end
+        
+        innerEdge = Core.window.height + Core.d_center/2;
+        outerEdge = innerEdge + Core.d_center/2; % approximate
+        rectangle('Position', [-outerEdge, -dC/2, outerEdge - innerEdge, dC], 'LineWidth', 2, 'EdgeColor', 'k')
+        rectangle('Position', [innerEdge, -dC/2, outerEdge - innerEdge, dC], 'LineWidth', 2, 'EdgeColor', 'k')
+    end
+    
     hold off
     grid on
+    axis equal
 
-    clear nwp nws coreRadius outerRadius
+%     clear nwp nws coreRadius outerRadius
 end

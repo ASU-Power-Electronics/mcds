@@ -1,6 +1,5 @@
 %% Guidelines
 % Computes litz wire sizing guidelines.
-%TODO: Add option to suggest parallel wires for large current densities.
 
 function result = guidelines(P, S, b, h)
     global J_MAX
@@ -24,19 +23,20 @@ function result = guidelines(P, S, b, h)
     ACutot = 0;
     
     % reduced proximity loss, high surface area to volume ratio Sullivan (2014)
-    Jtarget = J_MAX*(nwp + nws);
+    % surface-to-volume ratio of 4/d for a cylinder (S/V = pi*d*L/(pi/4*d^2*L))
+    Jtarget = J_MAX*4; % per unit diameter approximation
     
     % Litz wire strand gauges and areas
-    awgz = 32:2:48;
+    awgz = [33, 36:2:48];
     [~, Az] = AWG2m(awgz);
     
     % available wire constructions (eBay) (note, no 34AWG wire for sale)
     load('Wires.mat', 'Wires')
     
     % table from Sullivan paper (2014) - k is a parameter, d is strand diameter
-    % truncated by removing odd gauges, since they aren't purchasable
-	k = [130, 318, 771, 1.8e3, 4.4e3, 10e3, 24e3, 54e3, 115e3]*1e9;
-	d = [0.202, 0.160, 0.127, 0.101, 0.080, 0.063, 0.050, 0.040, 0.032]*1e-3;
+    % truncated to available New England Wire products
+	k = [203, 771, 1.8e3, 4.4e3, 10e3, 24e3, 54e3, 115e3]*1e9;
+	d = [0.180, 0.127, 0.101, 0.080, 0.063, 0.050, 0.040, 0.032]*1e-3;
     
     % find minimum areas for Jtarget and total minimum area of all windings
     if nwp > 1
@@ -60,7 +60,10 @@ function result = guidelines(P, S, b, h)
     end
     
     if nwp > 1
+        subPos = 1:2:2*nwp;
+        
         for p = 1:nwp
+            curSubPos = subPos(p);
             thisW = P(p);
             thisR = result.P(p);
             
@@ -77,7 +80,10 @@ function result = guidelines(P, S, b, h)
     end
     
     if nws > 1
+        subPos = 2:2:2*nws;
+        
         for s = 1:nws
+            curSubPos = subPos(s);
             thisW = S(s);
             thisR = result.S(s);
             
@@ -93,64 +99,113 @@ function result = guidelines(P, S, b, h)
         result.S = computeResultsS(thisW, thisR);
     end
     
-    %% Nested Functions
+    %% Functions
     
     % computeResultsP
     % Computes results for primary.    
-    function res = computeResultsP(W, res)
+    function res = computeResultsP(W, res)        
         validCons = 0;       % valid construction counter
         N = W.N;
         delta = W.delta_p;
+        NPW = 1;
+        atLeastOne = false;
         
         % Skin depth provides range of bundles
         dmax = W.d_pMax;
         [~, idx] = find(d(dmax > d), 1);    % index of closest safe fit
+        
+        % Find suboptimal strands if optimal strand can't be found, up to 2delta
+        while isempty(idx) && dmax < 2*delta
+            dmax = dmax*2;
+            [~, idx] = find(d(dmax > d), 1);
+        end
+        
         ArangeS = Az(idx:end);              % strand copper areas
         AWGrangeS = awgz(idx:end);          % AWG values
-        
-        % base case
-        nS = round(k(idx:end)*delta^2*b/N); % integer number of strands
-        ArangeB = ArangeS.*nS;              % bundle copper areas for nS
-        AWGrangeB = ceil(m2AWG(ArangeB));	% equivalent integer bundle AWGs
-        [DeffB, ~] = AWG2m(AWGrangeB);      % bundle effective Cu diameters
-        
-        % +25% number of strands
-        nShi = ceil(nS*1.25);
-        ArangeBhi = ArangeS.*nShi;
-        AWGrangeBhi = ceil(m2AWG(ArangeBhi));
-        [DeffBhi, ~] = AWG2m(AWGrangeBhi);
-        
-        % -25% number of strands
-        nSlo = floor(nS*0.75);
-        ArangeBlo = ArangeS.*nSlo;
-        AWGrangeBlo = ceil(m2AWG(ArangeBlo));
-        [DeffBlo, ~] = AWG2m(AWGrangeBlo);
         
         % Winding area bounds bundle size above
         AmaxTot = Ab*N*res.Amin/ACutot;	% fraction of bobbin window
         AmaxOut = (pi/4)*AmaxTot/N;     % max outer round bundle area for fit
-        
-        % Final upper bound is minimum of window and skin depth max
         res.Amax = AmaxOut*(0.68125)^2; % max bundle copper area
         res.AWGmax = m2AWG(res.Amax);   % max bundle effective AWG
         
         % Current density bounds bundle size below
         res.AWGmin = m2AWG(res.Amin);   % min bundle effective AWG
         
-        figure
-        plot(ArangeB)
+        while ~atLeastOne
+            % base case
+            nS = round(k(idx:end)*delta^2*b/N); % integer number of strands
+            nS = nS*NPW;                        % parallel wire bundles
+            ArangeB = ArangeS.*nS;              % bundle copper areas for nS
+
+            % +25% number of strands
+            nShi = ceil(nS*1.25);
+            ArangeBhi = ArangeS.*nShi;
+
+            % -25% number of strands
+            nSlo = floor(nS*0.75);
+            ArangeBlo = ArangeS.*nSlo;
+            
+            atLeastOne = any(ArangeBlo > res.Amin) || ...
+                         any(ArangeB > res.Amin) || ...
+                         any(ArangeBhi > res.Amin);
+            
+            if ~atLeastOne
+                NPW = NPW + 1;
+            end
+        end
+        
+        % generate plots of fictitious constructions and bounds
+        if isequal(nwp, 1) || isequal(p, 1)
+            hf = figure;
+            hf.Units = 'inches';
+            hf.Position = [2, 2, hf.Position(3)*2, hf.Position(4)*2];
+        end
+        
+        if nwp > 1
+            subplot(max(nwp, nws), 2, curSubPos)
+        else
+            subplot(1, 2, 1)
+        end
+        
+        plot(AWGrangeS, ArangeB*1e6, 'DisplayName', 'Nominal n_{Strands}')
         hold on
-        plot(ArangeBhi)
-        plot(ArangeBlo)
-        refline(0, res.Amin)
-        refline(0, res.Amax)
+        plot(AWGrangeS, ArangeBhi*1e6, 'DisplayName', '+25%')
+        plot(AWGrangeS, ArangeBlo*1e6, 'DisplayName', '-25%')
+        hl1 = refline(0, res.Amin*1e6);
+        hl1.Annotation.LegendInformation.IconDisplayStyle = 'off';
+        text(AWGrangeS(1), res.Amin*1e6, ...
+             ['A_{min} = ', num2str(res.Amin*1e6, '%.1f'), ' mm^2'], ...
+             'VerticalAlignment', 'bottom')
+        hl2 = refline(0, res.Amax*1e6);
+        hl2.Annotation.LegendInformation.IconDisplayStyle = 'off';
+        text(AWGrangeS(1), res.Amax*1e6, ...
+             ['A_{max} = ', num2str(res.Amax*1e6, '%.1f'), ' mm^2'], ...
+             'VerticalAlignment', 'top')
         hold off
+        grid on
+        
+        if nwp > 1
+            title(['Area Bounds for Primary ', num2str(p)])
+        else
+            title('Area Bounds for Primary')
+        end
+        
+        ylabel('Bundle Area [mm^2]')
+        
+        if isequal(nwp, 1) || isequal(p, nwp)
+            xlabel('Strand Gauge [AWG]')
+        end
+        
+        if isequal(nwp, 1) || isequal(p, 1)
+            legend('show')
+        end
         
         for awg = idx:length(AWGrangeS) + idx - 1
-            isValid = Wires.AWG(awg).A_b >= res.Amin & ...
-                      Wires.AWG(awg).A_b <= res.Amax & ...
-                      Wires.AWG(awg).N_s > nSlo(awg) & ...
-                      Wires.AWG(awg).N_s < nShi(awg);
+            isValid = NPW*Wires.AWG(awg).A_b >= res.Amin & ...
+                      NPW*Wires.AWG(awg).A_b <= res.Amax & ...
+                      NPW*Wires.AWG(awg).N_s > nSlo(awg) & ...
+                      NPW*Wires.AWG(awg).N_s < nShi(awg);
             
             if any(isValid)
                 for validCon = 1:length(isValid)                    
@@ -162,6 +217,12 @@ function result = guidelines(P, S, b, h)
                         construction.A_b = Wires.AWG(awg).A_b(validCon);
                         construction.D_o = Wires.AWG(awg).D_o(validCon);
                         construction.N_bpl = floor(b./Wires.AWG(awg).D_o(validCon));
+                        construction.N_pw = NPW;
+                        
+                        % prevent fresh constructions from errors
+                        if isa(res.constructions, 'double')
+                            res.constructions = struct();
+                        end
                         
                         if isempty(fieldnames(res.constructions))
                             res.constructions.N_s = [];
@@ -170,6 +231,7 @@ function result = guidelines(P, S, b, h)
                             res.constructions.A_b = [];
                             res.constructions.D_o = [];
                             res.constructions.N_bpl = [];
+                            res.constructions.N_pw = [];
                         end
                         
                         res.constructions(validCons) = construction;
@@ -183,34 +245,25 @@ function result = guidelines(P, S, b, h)
     
     % computeResultsS
     % Computes results for secondary.
-    function res = computeResultsS(W, res)
+    function res = computeResultsS(W, res)        
         validCons = 0;       % valid construction counter
         N = W.N;
         delta = W.delta_s;
+        NPW = 1;
+        atLeastOne = false;
         
         % Skin depth provides range of bundles
         dmax = W.d_sMax;
         [~, idx] = find(d(dmax > d), 1);    % index of closest safe fit
+        
+        % Find suboptimal strands if optimal strand can't be found, up to 2delta
+        while isempty(idx) && dmax < 2*delta
+            dmax = dmax*2;
+            [~, idx] = find(d(dmax > d), 1);
+        end
+        
         ArangeS = Az(idx:end);              % strand copper areas
         AWGrangeS = awgz(idx:end);          % AWG values
-        
-        % base case
-        nS = round(k(idx:end)*delta^2*b/N); % integer number of strands
-        ArangeB = ArangeS.*nS;              % bundle copper areas for nS
-        AWGrangeB = ceil(m2AWG(ArangeB));	% equivalent integer bundle AWGs
-        [DeffB, ~] = AWG2m(AWGrangeB);      % bundle effective Cu diameters
-        
-        % +25% number of strands
-        nShi = ceil(nS*1.25);
-        ArangeBhi = ArangeS.*nShi;
-        AWGrangeBhi = ceil(m2AWG(ArangeBhi));
-        [DeffBhi, ~] = AWG2m(AWGrangeBhi);
-        
-        % -25% number of strands
-        nSlo = floor(nS*0.75);
-        ArangeBlo = ArangeS.*nSlo;
-        AWGrangeBlo = ceil(m2AWG(ArangeBlo));
-        [DeffBlo, ~] = AWG2m(AWGrangeBlo);
         
         % Winding area bounds bundle size above
         AmaxTot = Ab*N*res.Amin/ACutot;	% fraction of bobbin window
@@ -221,20 +274,69 @@ function result = guidelines(P, S, b, h)
         % Current density bounds bundle size below
         res.AWGmin = m2AWG(res.Amin);   % min bundle effective AWG
         
-        figure
-        plot(ArangeB)
+        while ~atLeastOne
+            % base case
+            nS = round(k(idx:end)*delta^2*b/N); % integer number of strands
+            nS = nS*NPW;                        % parallel wire bundles
+            ArangeB = ArangeS.*nS;              % bundle copper areas for nS
+
+            % +25% number of strands
+            nShi = ceil(nS*1.25);
+            ArangeBhi = ArangeS.*nShi;
+
+            % -25% number of strands
+            nSlo = floor(nS*0.75);
+            ArangeBlo = ArangeS.*nSlo;
+            
+            atLeastOne = any(ArangeBlo > res.Amin) || ...
+                         any(ArangeB > res.Amin) || ...
+                         any(ArangeBhi > res.Amin);
+                     
+            if ~atLeastOne
+                NPW = NPW + 1;
+            end
+        end
+        
+        if nws > 1
+            subplot(max(nwp, nws), 2, curSubPos)
+        else
+            subplot(1, 2, 2)
+        end
+        
+        plot(AWGrangeS, ArangeB*1e6, 'DisplayName', 'Nominal n_{Strands}')
         hold on
-        plot(ArangeBhi)
-        plot(ArangeBlo)
-        refline(0, res.Amin)
-        refline(0, res.Amax)
+        plot(AWGrangeS, ArangeBhi*1e6, 'DisplayName', '+25%')
+        plot(AWGrangeS, ArangeBlo*1e6, 'DisplayName', '-25%')
+        hl1 = refline(0, res.Amin*1e6);
+        hl1.Annotation.LegendInformation.IconDisplayStyle = 'off';
+        text(AWGrangeS(1), res.Amin*1e6, ...
+             ['A_{min} = ', num2str(res.Amin*1e6, '%.1f'), ' mm^2'], ...
+             'VerticalAlignment', 'bottom')
+        hl2 = refline(0, res.Amax*1e6);
+        hl2.Annotation.LegendInformation.IconDisplayStyle = 'off';
+        text(AWGrangeS(1), res.Amax*1e6, ...
+             ['A_{max} = ', num2str(res.Amax*1e6, '%.1f'), ' mm^2'], ...
+             'VerticalAlignment', 'top')
         hold off
+        grid on
+        
+        if nws > 1
+            title(['Area Bounds for Secondary ', num2str(s)])
+        else
+            title('Area Bounds for Secondary')
+        end
+        
+        ylabel('Bundle Area [mm^2]')
+        
+        if isequal(nws, 1) || isequal(s, nws)
+            xlabel('Strand Gauge [AWG]')
+        end
         
         for awg = idx:length(AWGrangeS) + idx - 1
-            isValid = Wires.AWG(awg).A_b >= res.Amin & ...
-                      Wires.AWG(awg).A_b <= res.Amax & ...
-                      Wires.AWG(awg).N_s > nSlo(awg) & ...
-                      Wires.AWG(awg).N_s < nShi(awg);
+            isValid = NPW*Wires.AWG(awg).A_b >= res.Amin & ...
+                      NPW*Wires.AWG(awg).A_b <= res.Amax & ...
+                      NPW*Wires.AWG(awg).N_s > nSlo(awg) & ...
+                      NPW*Wires.AWG(awg).N_s < nShi(awg);
             
             if any(isValid)
                 for validCon = 1:length(isValid)                    
@@ -246,6 +348,12 @@ function result = guidelines(P, S, b, h)
                         construction.A_b = Wires.AWG(awg).A_b(validCon);
                         construction.D_o = Wires.AWG(awg).D_o(validCon);
                         construction.N_bpl = floor(b./Wires.AWG(awg).D_o(validCon));
+                        construction.N_pw = NPW;
+                        
+                        % prevent fresh constructions from errors
+                        if isa(res.constructions, 'double')
+                            res.constructions = struct();
+                        end
                         
                         if isempty(fieldnames(res.constructions))
                             res.constructions.N_s = [];
@@ -254,6 +362,7 @@ function result = guidelines(P, S, b, h)
                             res.constructions.A_b = [];
                             res.constructions.D_o = [];
                             res.constructions.N_bpl = [];
+                            res.constructions.N_pw = [];
                         end
                         
                         res.constructions(validCons) = construction;
