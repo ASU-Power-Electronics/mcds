@@ -158,8 +158,9 @@ function result = guidelines(P, S, b, h)
         % generate plots of fictitious constructions and bounds
         if isequal(nwp, 1) || isequal(p, 1)
             hf = figure;
-            hf.Units = 'inches';
-            hf.Position = [2, 2, hf.Position(3)*2, hf.Position(4)*2];
+            hf.Position = [hf.Position(1) - hf.Position(3), ...
+                           hf.Position(2) - hf.Position(4), ...
+                           hf.Position(3)*2, hf.Position(4)*2];
         end
         
         if nwp > 1

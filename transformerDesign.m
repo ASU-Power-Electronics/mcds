@@ -465,12 +465,30 @@ fprintf('Core selected: %s\n\n', thisC.name)
 nwp = thisP.N_wp;
 nws = thisP.N_ws;
 
+inputPrompts = {};
+inputDims = [1, 20];
+inputDefs = {};
+
 for p = 1:nwp
     thisW.primary(p).N = ceil(thisW.primary(p).V_pRMS/(thisP.K_f*Converter.f_s*thisC.material.main.B_sat*thisC.A_e));
+    inputPrompts{1, p} = ['Primary winding ', num2str(p), ' N:'];
+    inputDefs{1, p} = num2str(thisW.primary(p).N);
 end
 
 for s = 1:nws
     thisW.secondary(s).N = ceil(thisW.primary(1).N*Converter.n(1, s));
+    inputPrompts{1, p + s} = ['Secondary winding ', num2str(s), ' N:'];
+    inputDefs{1, p + s} = num2str(thisW.secondary(s).N);
+end
+
+resp = inputdlg(inputPrompts, 'Number of Turns', inputDims, inputDefs);
+
+for p = 1:nwp
+    thisW.primary(p).N = str2double(resp{p});
+end
+
+for s = 1:nws
+    thisW.secondary(s).N = str2double(resp{p + s});
 end
 
 % calculate flux from primary winding voltage
@@ -529,18 +547,19 @@ end
 thisP.K_g = (thisC.W_a*thisC.A_e^2*thisP.K_u)/thisC.MLT;
 
 % display for use in LitzOpt (in millimeters)
-fprintf('LitzOpt Parameters:\n')
-fprintf('Breadth of the core window (mm):  %g\n', thisC.window.breadth*1e3)
-fprintf('Height of the core window (mm):  %g\n', thisC.window.height*1e3)
-fprintf('Breadth of the bobbin window (mm):  %g\n', thisC.bobbin.breadth*1e3)
-fprintf('Height of the bobbin window (mm):  %g\n', thisC.bobbin.height*1e3)
-fprintf('Gap length (mm):  %g\n', 0)
-fprintf('Center Leg Diameter (mm):  %g\n\n', thisC.d_center*1e3)
+% fprintf('LitzOpt Parameters:\n')
+% fprintf('Breadth of the core window (mm):  %g\n', thisC.window.breadth*1e3)
+% fprintf('Height of the core window (mm):  %g\n', thisC.window.height*1e3)
+% fprintf('Breadth of the bobbin window (mm):  %g\n', thisC.bobbin.breadth*1e3)
+% fprintf('Height of the bobbin window (mm):  %g\n', thisC.bobbin.height*1e3)
+% fprintf('Gap length (mm):  %g\n', 0)
+% fprintf('Center Leg Diameter (mm):  %g\n\n', thisC.d_center*1e3)
 
 Transformer.core = orderfields(thisC);
 Transformer.properties = orderfields(thisP);
 Transformer.winding = orderfields(thisW);
-clear thisC thisP thisW r h b N nwp nws selectCore
+clear thisC thisP thisW r h b N nwp nws selectCore p s
+clear inputDefs inputDims inputPrompts
 
 %%
 % *Initial Wire Selection*
@@ -770,7 +789,7 @@ else
 end
 
 Time.t9 = tkeep;
-I = zeros(nwp + nws, length(tkeep));
+% I = zeros(nwp + nws, length(tkeep));
 
 if nwp > 1
     for w = 1:nwp
@@ -781,7 +800,7 @@ if nwp > 1
         end
         
         thisP(w).waveform.i_p9 = iwf(idxkeep);
-        I(w, :) = thisP(w).waveform.i_p9;
+%         I(w, :) = thisP(w).waveform.i_p9;
     end
 else
     if Converter.f_0 > 0
@@ -791,7 +810,7 @@ else
     end
     
     thisP.waveform.i_p9 = iwf(idxkeep);
-    I(1, :) = thisP.waveform.i_p9;
+%     I(1, :) = thisP.waveform.i_p9;
 end
 
 if nws > 1
@@ -803,7 +822,7 @@ if nws > 1
         end
         
         thisS(w - nwp).waveform.i_s9 = iwf(idxkeep);
-        I(w, :) = thisS(w - nwp).waveform.i_s9;
+%         I(w, :) = thisS(w - nwp).waveform.i_s9;
     end
 else
     if Converter.f_0 > 0
@@ -813,16 +832,16 @@ else
     end
     
     thisS.waveform.i_s9 = iwf(idxkeep);
-    I(nwp + 1, :) = thisS.waveform.i_s9;
+%     I(nwp + 1, :) = thisS.waveform.i_s9;
 end
 
-tableNames = {'Duration', 'Current'};
-
-currentTempTable = table([0, diff(Time.t9*1e6)]', I');
-currentTempTable.Properties.VariableNames = tableNames;
-
-fprintf('\nLitzOpt Time and Current Vectors:\n');
-disp(currentTempTable)
+% tableNames = {'Duration', 'Current'};
+% 
+% currentTempTable = table([0, diff(Time.t9*1e6)]', I');
+% currentTempTable.Properties.VariableNames = tableNames;
+% 
+% fprintf('\nLitzOpt Time and Current Vectors:\n');
+% disp(currentTempTable)
 
 Transformer.winding.primary = orderfields(thisP);
 Transformer.winding.secondary = orderfields(thisS);

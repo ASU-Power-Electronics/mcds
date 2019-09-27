@@ -193,9 +193,13 @@ function Winding = constructWinding(Transformer)
     % fun plot of core and winding geometry; basic validation of feasibility
     if strcmp(Core.c_leg_type, 'round')
         coreRadius = sqrt(Core.A_e/pi);
+        tBobbin = Core.window.height - Core.bobbin.height;
         figure
-        polarplot(0:pi/180:2*pi, coreRadius*ones(1, 361), 'LineWidth', 2, 'Color', 'k');
-        hold on;
+        polarplot(0:pi/180:2*pi, coreRadius*ones(1, 361), ...
+                  'LineWidth', 2, 'Color', 'k');
+        polarplot(0:pi/180:2*pi, (coreRadius + tBobbin)*ones(1, 361), ...
+                  'LineWidth', 2, 'Color', ones(1, 2)/sqrt(2));
+        hold on
 
         if nwp > 1
             for idx = 1:nwp
@@ -218,23 +222,40 @@ function Winding = constructWinding(Transformer)
         end
 
         outerRadius = Core.window.height + Core.d_center/2;
-        polarplot(0:pi/180:2*pi, outerRadius*ones(1, 361), 'LineWidth', 2, 'Color', 'k');
+        polarplot(0:pi/180:2*pi, outerRadius*ones(1, 361), ...
+                  'LineWidth', 2, 'Color', 'k');
     else
         tBobbin = Core.window.height - Core.bobbin.height;
-        hC = Core.d_center + tBobbin; % center leg height w/ bobbin (x)
-        dC = Core.d_center2 + tBobbin; % center leg depth w/ bobbin (z)
-        offsetX = hC/2;
-        offsetY = dC/2;
+        hC = Core.d_center;             % center leg height (x)
+        dC = Core.d_center2;            % center leg depth (z)
+        hCb = Core.d_center + tBobbin;	% center leg height w/ bobbin (x)
+        dCb = Core.d_center2 + tBobbin; % center leg depth w/ bobbin (z)
+        offsetX = hCb/2;
+        offsetY = dCb/2;
         bifpair = false;
         
+        colorVals = {[0, 0.4470, 0.7410]; ...
+                     [0.8500, 0.3250, 0.0980]; ...
+                     [0.9290, 0.6940, 0.1250]; ...
+                     [0.4940, 0.1840, 0.5560]; ...
+                     [0.4660, 0.6740, 0.1880]; ...
+                     [0.3010, 0.7450, 0.9330]; ...
+                     [0.6350, 0.0780, 0.1840]};
+        
         figure
-        rectangle('Position', [-offsetX, -offsetY, hC, dC], 'LineWidth', 2, 'EdgeColor', 'k')
+        rectangle('Position', [-hC/2, -dC/2, hC, dC], ...
+                  'LineWidth', 2, 'EdgeColor', 'k')
+        rectangle('Position', [-offsetX, -offsetY, hCb, dCb], ...
+                  'LineWidth', 2, 'EdgeColor', ones(1, 3)/sqrt(2));
         hold on
         
         if nwp > 1
             for idx = 1:nwp
                 hW = Winding.primary(idx).N_L*Winding.primary(idx).d_o;
-                rectangle('Position', [-offsetX - hW/2, -offsetY - hW/2, 2*offsetX + hW, 2*offsetY + hW], 'Curvature', 0.2)
+                posVec = [-offsetX - hW/2, -offsetY - hW/2, ...
+                          2*offsetX + hW, 2*offsetY + hW];
+                rectangle('Position', posVec, 'Curvature', 0.2, ...
+                          'EdgeColor', colorVals{idx})
                 
                 if isequal(Winding.primary(idx).bifilar, 2)
                     if bifpair
@@ -251,7 +272,10 @@ function Winding = constructWinding(Transformer)
             end
         else
             hW = Winding.primary.N_L*Winding.primary.d_o;
-            rectangle('Position', [-offsetX - hW/2, -offsetY - hW/2, 2*offsetX + hW, 2*offsetY + hW], 'Curvature', 0.2)
+            posVec = [-offsetX - hW/2, -offsetY - hW/2, ...
+                      2*offsetX + hW, 2*offsetY + hW];
+            rectangle('Position', posVec, 'Curvature', 0.2, ...
+                      'EdgeColor', colorVals{idx})
                 
             if isequal(Winding.primary.bifilar, 2)
                 bifpair = true;
@@ -264,7 +288,10 @@ function Winding = constructWinding(Transformer)
         if nws > 1
             for idx = 1:nws
                 hW = Winding.secondary(idx).N_L*Winding.secondary(idx).d_o;
-                rectangle('Position', [-offsetX - hW/2, -offsetY - hW/2, 2*offsetX + hW, 2*offsetY + hW], 'Curvature', 0.2)
+                posVec = [-offsetX - hW/2, -offsetY - hW/2, ...
+                          2*offsetX + hW, 2*offsetY + hW];
+                rectangle('Position', posVec, 'Curvature', 0.2, ...
+                          'EdgeColor', colorVals{idx})
                 
                 if isequal(Winding.primary(idx).bifilar, 2)
                     if bifpair
@@ -281,18 +308,21 @@ function Winding = constructWinding(Transformer)
             end
         else
             hW = Winding.secondary.N_L*Winding.secondary.d_o;
-            rectangle('Position', [-offsetX - hW/2, -offsetY - hW/2, 2*offsetX + hW, 2*offsetY + hW], 'Curvature', 0.2)
+            posVec = [-offsetX - hW/2, -offsetY - hW/2, ...
+                      2*offsetX + hW, 2*offsetY + hW];
+            rectangle('Position', posVec, 'Curvature', 0.2, ...
+                      'EdgeColor', colorVals{idx})
         end
         
         innerEdge = Core.window.height + Core.d_center/2;
         outerEdge = innerEdge + Core.d_center/2; % approximate
-        rectangle('Position', [-outerEdge, -dC/2, outerEdge - innerEdge, dC], 'LineWidth', 2, 'EdgeColor', 'k')
-        rectangle('Position', [innerEdge, -dC/2, outerEdge - innerEdge, dC], 'LineWidth', 2, 'EdgeColor', 'k')
+        posVec1 = [-outerEdge, -dC/2, outerEdge - innerEdge, dC];
+        posVec2 = [innerEdge, -dC/2, outerEdge - innerEdge, dC];
+        rectangle('Position', posVec1, 'LineWidth', 2, 'EdgeColor', 'k')
+        rectangle('Position', posVec2, 'LineWidth', 2, 'EdgeColor', 'k')
+        axis equal
     end
     
     hold off
     grid on
-    axis equal
-
-%     clear nwp nws coreRadius outerRadius
 end
