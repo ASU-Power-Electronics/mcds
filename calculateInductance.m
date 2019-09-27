@@ -10,10 +10,8 @@
 % gives 86.3393e-6, 40.4391e-6 (85e-6, 34e-6)
 % for a total of 158.5894e-6 (144e-6)
 % which is a 10.13% overestimate
-%TODO: include tolerance set at beginning of design script for airInductance and
-%      coreInductance.
 
-function [M, Ml] = calculateInductance(Windings, Core, N_w, f_s)
+function [M, Ml] = calculateInductance(Windings, Core, N_w, f_s, tol)
     global MU_0
     
     % core variable extraction
@@ -47,8 +45,8 @@ function [M, Ml] = calculateInductance(Windings, Core, N_w, f_s)
             GMDself = 0;  % single filament has no GMD
         end
         
-        [Lab, Lal] = airInductance(N1, N1, A, A, length, GMDself);
-        [Lcb, Lcl] = coreInductance(N1, N1, rIn1, rOut1, rIn1, rOut1, h1, w1, h1, w1, length, b, mu_i, sigma_c, omega);
+        [Lab, Lal] = airInductance(N1, N1, A, A, length, GMDself, tol);
+        [Lcb, Lcl] = coreInductance(N1, N1, rIn1, rOut1, rIn1, rOut1, h1, w1, h1, w1, length, b, mu_i, sigma_c, omega, tol);
         
         M(i, i) = Lab + Lal + Lcb*(gammaTerm - 1/mu_i) + Lcl;
         Ml(i, i) = Lal + Lcl;
@@ -75,8 +73,8 @@ function [M, Ml] = calculateInductance(Windings, Core, N_w, f_s)
                 w2 = Windings{j}.tpl*Windings{j}.d_o*Windings{j}.NPW*Windings{i}.bifilar;
                 GMD = R - A;
                 
-                [Mab, Mal] = airInductance(N1, N2, A, R, length, GMD);
-                [Mcb, Mcl] = coreInductance(N1, N2, rIn1, rOut1, rIn2, rOut2, h1, w1, h2, w2, length, b, mu_i, sigma_c, omega);
+                [Mab, Mal] = airInductance(N1, N2, A, R, length, GMD, tol);
+                [Mcb, Mcl] = coreInductance(N1, N2, rIn1, rOut1, rIn2, rOut2, h1, w1, h2, w2, length, b, mu_i, sigma_c, omega, tol);
         
                 M(i, j) = Mab + Mal + Mcb*(gammaTerm - 1/mu_i) + Mcl;
                 M(j, i) = M(i, j);

@@ -51,20 +51,24 @@ function Winding = constructWinding(Transformer)
     [thisS(:).length] = Z{:};
     
     fprintf('\nWire Selection:\n')
+    
+    inputStruct = struct();
+    inputStruct.prompt = {'Primary winding', 'AWG, # strands, # parallel wires'; ...
+                          'Secondary winding', 'AWG, # strands, # parallel wires'};
+	inputStruct.dlgtitle = 'Wire Selection';
+    inputStruct.definput = [44, 100, 1];
+    inputStruct.np = nwp;
+    inputStruct.ns = nws;
+    
+    answer = createWindingInput(inputStruct);
 
     % primary winding(s) layer geometry
     if nwp > 1
         for idx = 1:nwp
             bifAnswer = '';
 
-            while isequal(bifAnswer, '')
-                titleStr = ['Primary Winding ', num2str(idx), ' Wire Selection'];
-                answer = inputdlg({'Wire gauge', ...
-                                   'Number of strands', ...
-                                   'Number of parallel wires'}, ...
-                                  titleStr, 1, {'0', '0', '1'});
-                
-                bifAnswer = questdlg('Bifilar-wound?');
+            while isequal(bifAnswer, '')                
+                bifAnswer = questdlg(['Primary ', num2str(idx), ' Bifilar-wound?');
 
                 if isequal(bifAnswer, 'Yes')
                     thisP(idx).bifilar = 2;
@@ -75,7 +79,9 @@ function Winding = constructWinding(Transformer)
                 end
             end
             
-            thisP(idx) = computeGeometry(thisP(idx), bb, answer);
+            answerFrag = split(answer{idx}, {' ', ','});
+            
+            thisP(idx) = computeGeometry(thisP(idx), bb, answerFrag);
 
             Winding.A_Cu = Winding.A_Cu + thisP(idx).A_Cu;
 
@@ -86,27 +92,10 @@ function Winding = constructWinding(Transformer)
             fprintf('Primary %d layer count:  %d\n', idx, thisP(idx).N_L)
         end
     else
-        bifAnswer = '';
+        thisP.bifilar = 1; % no more primary windings
+        answerFrag = split(answer{1}, {' ', ','});
 
-        while isequal(bifAnswer, '')
-            answer = inputdlg({'Wire gauge', ...
-                               'Number of strands', ...
-                               'Number of parallel wires'}, ...
-                              'Primary Winding Wire Selection', ...
-                              1, {'0', '0', '1'});
-
-            bifAnswer = questdlg('Bifilar-wound?');
-
-            if isequal(bifAnswer, 'Yes')
-                thisP.bifilar = 2;
-            elseif isequal(bifAnswer, 'No')
-                thisP.bifilar = 1;
-            elseif isequal(bifAnswer, 'Cancel') || isequal(bifAnswer, '')
-                bifAnswer = '';
-            end
-        end
-
-        thisP = computeGeometry(thisP, bb, answer);
+        thisP = computeGeometry(thisP, bb, answerFrag);
 
         Winding.A_Cu = Winding.A_Cu + thisP.A_Cu;
 
@@ -123,13 +112,7 @@ function Winding = constructWinding(Transformer)
             bifAnswer = '';
 
             while isequal(bifAnswer, '')
-                titleStr = ['Secondary Winding ', num2str(idx), ' Wire Selection'];
-                answer = inputdlg({'Wire gauge', ...
-                                   'Number of strands', ...
-                                   'Number of parallel wires'}, ...
-                                  titleStr, 1, {'0', '0', '1'});
-
-                bifAnswer = questdlg('Bifilar-wound?');
+                bifAnswer = questdlg('Secondary ', num2str(idx), ' Bifilar-wound?');
 
                 if isequal(bifAnswer, 'Yes')
                     thisS(idx).bifilar = 2;
@@ -140,7 +123,8 @@ function Winding = constructWinding(Transformer)
                 end
             end
 
-            thisS(idx) = computeGeometry(thisS(idx), bb, answer);
+            answerFrag = split(answer{idx}, {' ', ','});
+            thisS(idx) = computeGeometry(thisS(idx), bb, answerFrag);
 
             Winding.A_Cu = Winding.A_Cu + thisS(idx).A_Cu;
 
@@ -151,27 +135,10 @@ function Winding = constructWinding(Transformer)
             fprintf('Secondary %d layer count:  %d\n', idx, thisS(idx).N_L)
         end
     else
-        bifAnswer = '';
-
-        while isequal(bifAnswer, '')
-            answer = inputdlg({'Wire gauge', ...
-                               'Number of strands', ...
-                               'Number of parallel wires'}, ...
-                              'Secondary Winding Wire Selection', ...
-                              1, {'0', '0', '1'});
-
-            bifAnswer = questdlg('Bifilar-wound?');
-
-            if isequal(bifAnswer, 'Yes')
-                thisS.bifilar = 2;
-            elseif isequal(bifAnswer, 'No')
-                thisS.bifilar = 1;
-            elseif isequal(bifAnswer, 'Cancel') || isequal(bifAnswer, '')
-                bifAnswer = '';
-            end
-        end
-
-        thisS = computeGeometry(thisS, bb, answer);
+        thisS.bifilar = 1; % no more secondary windings
+        
+        answerFrag = split(answer{2}, {' ', ','});
+        thisS = computeGeometry(thisS, bb, answerFrag);
 
         Winding.A_Cu = Winding.A_Cu + thisS.A_Cu;
 
@@ -186,9 +153,6 @@ function Winding = constructWinding(Transformer)
 
     Winding.primary = orderfields(thisP);
     Winding.secondary = orderfields(thisS);
-    clear thisP thisS flag count bb isTrueMultiWinding isPaired
-    clear isDirectPairing isNearDirectPair isOverallPairing isNearOverallPair
-    clear isEligibleForInterleave
 
     % fun plot of core and winding geometry; basic validation of feasibility
     if strcmp(Core.c_leg_type, 'round')

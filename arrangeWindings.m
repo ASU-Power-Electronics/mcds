@@ -209,11 +209,11 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                 switch lastPS
                     case 'S' % primary layer
                         if nwp > 1
-                            if pCurrentLayer < thisP(pIDX).N_L
-                                if isequal(pCurrentLayer, 1)
-                                    d_Pin = lastDiameter;
-                                end
-                                
+                            if isequal(pCurrentLayer, 1)
+                                d_Pin = lastDiameter;
+                            end
+                            
+                            if pCurrentLayer < thisP(pIDX).N_L                                
                                 lastDiameter = lastDiameter + 2*thisP(pIDX).d_o;
                             else
                                 d_Pout = lastDiameter + 2*thisP(pIDX).d_o;
@@ -240,11 +240,11 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                                 pCurrentLayer = 1;
                             end
                         else
-                            if pCurrentLayer < thisP.N_L
-                                if isequal(pCurrentLayer, 1)
-                                    d_Pin = lastDiameter;
-                                end
-                                
+                            if isequal(pCurrentLayer, 1)
+                                d_Pin = lastDiameter;
+                            end
+                            
+                            if pCurrentLayer < thisP.N_L                                
                                 lastDiameter = lastDiameter + 2*thisP.d_o;
                             else
                                 d_Pout = lastDiameter + 2*thisP.d_o;
@@ -265,11 +265,11 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                         lastPS = 'P';
                     case 'P' % secondary layer
                         if nws > 1
-                            if sCurrentLayer < thisS(sIDX).N_L
-                                if isequal(sCurrentLayer, 1)
-                                    d_Sin = lastDiameter;
-                                end
-                                
+                            if isequal(sCurrentLayer, 1)
+                                d_Sin = lastDiameter;
+                            end
+                            
+                            if sCurrentLayer < thisS(sIDX).N_L                                
                                 lastDiameter = lastDiameter + 2*thisS(sIDX).d_o;
                             else
                                 d_Sout = lastDiameter + 2*thisS(sIDX).d_o;
@@ -297,11 +297,11 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                                 sCurrentLayer = 1;
                             end
                         else
-                            if sCurrentLayer < thisS.N_L
-                                if isequal(sCurrentLayer, 1)
-                                    d_Sin = lastDiameter;
-                                end
-                                
+                            if isequal(sCurrentLayer, 1)
+                                d_Sin = lastDiameter;
+                            end
+                            
+                            if sCurrentLayer < thisS.N_L                                
                                 lastDiameter = lastDiameter + 2*thisS.d_o;
                             else
                                 d_Sout = lastDiameter + 2*thisS.d_o;

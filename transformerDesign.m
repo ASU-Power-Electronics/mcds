@@ -157,10 +157,6 @@ clear button
 % 
 % * $N_w$:  number of windings
 % * $N$:  transformer turns by winding
-% 
-%TODO: Add option to calculate number of turns automatically by
-% N = ceil(V_RMS/(K_f*f*B_sat*Ae)); will likely need to defer until later
-% with phi_pk = Ae*B_pk, we can approximate as early as waveform import
 
 % answer = inputdlg({'Number of primary windings', ...
 %                    'Number of turns in each primary winding (comma-separated)', ...
@@ -465,23 +461,24 @@ fprintf('Core selected: %s\n\n', thisC.name)
 nwp = thisP.N_wp;
 nws = thisP.N_ws;
 
-inputPrompts = {};
-inputDims = [1, 20];
-inputDefs = {};
+inputStruct = struct();
+inputStruct.prompt = {'Primary winding', 'N:'; 'Secondary winding', 'N:'};
+inputStruct.dlgtitle = 'Number of Turns';
+inputStruct.definput = {};
+inputStruct.np = nwp;
+inputStruct.ns = nws;
 
 for p = 1:nwp
     thisW.primary(p).N = ceil(thisW.primary(p).V_pRMS/(thisP.K_f*Converter.f_s*thisC.material.main.B_sat*thisC.A_e));
-    inputPrompts{1, p} = ['Primary winding ', num2str(p), ' N:'];
-    inputDefs{1, p} = num2str(thisW.primary(p).N);
+    inputStruct.definput{1, p} = thisW.primary(p).N;
 end
 
 for s = 1:nws
     thisW.secondary(s).N = ceil(thisW.primary(1).N*Converter.n(1, s));
-    inputPrompts{1, p + s} = ['Secondary winding ', num2str(s), ' N:'];
-    inputDefs{1, p + s} = num2str(thisW.secondary(s).N);
+    inputStruct.definput{2, s} = thisW.secondary(s).N;
 end
 
-resp = inputdlg(inputPrompts, 'Number of Turns', inputDims, inputDefs);
+resp = createWindingInput(inputStruct);
 
 for p = 1:nwp
     thisW.primary(p).N = str2double(resp{p});
@@ -891,7 +888,6 @@ Transformer.winding = constructWinding(Transformer);
 % Now that the transformer is completely designed, we can evaluate its
 % magnetizing inductance, mutual inductance between windings, and the leakage
 % inductance in each winding.
-%TODO: include tolerance in calculateInductance.
 
 thisW = Transformer.winding;
 thisP = Transformer.properties;
@@ -921,7 +917,7 @@ else
     tempWindings{count} = thisW.secondary;
 end
 
-[thisW.M, thisW.Ml] = calculateInductance(tempWindings, Transformer.core, thisP.N_w, Converter.f_s);
+[thisW.M, thisW.Ml] = calculateInductance(tempWindings, Transformer.core, thisP.N_w, Converter.f_s, tol);
 
 % assign magnetizing and leakage inductances
 thisP.L_m = thisW.M(1, 1) - thisW.Ml(1, 1);

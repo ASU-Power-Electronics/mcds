@@ -3,7 +3,7 @@
 % geometry of the coil(s), due to the contribution of the core.  Returns two
 % values, base and leakage inductance.
 
-function [Lcb, Lcl] = coreInductance(N1, N2, rIn1, rOut1, rIn2, rOut2, h1, w1, h2, w2, length, b, mu_i, sigma, omega)
+function [Lcb, Lcl] = coreInductance(N1, N2, rIn1, rOut1, rIn2, rOut2, h1, w1, h2, w2, length, b, mu_i, sigma, omega, tol)
     global MU_0
     
     % necessary functions (uses Struve01 from Mathworks)
@@ -21,7 +21,7 @@ function [Lcb, Lcl] = coreInductance(N1, N2, rIn1, rOut1, rIn2, rOut2, h1, w1, h
     delta = 1;
     
     % infinite image sum with truncation
-    while delta > 1e3*eps
+    while delta > tol
         betaK = 2*pi*k/length;
         P1 = P(rOut1, rIn1, betaK);
         P2 = P(rOut2, rIn2, betaK);
@@ -32,7 +32,7 @@ function [Lcb, Lcl] = coreInductance(N1, N2, rIn1, rOut1, rIn2, rOut2, h1, w1, h
         delta = abs(old - sum);
         k = k + 1;
         if isnan(sum) || isinf(sum)
-            fprintf('No good:  inductance outta whack.\n')
+%             fprintf('No good:  core inductance outta whack at k = %d.\n', k)
             sum = old; % put it back
             break
         end

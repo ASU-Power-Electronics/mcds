@@ -23,13 +23,20 @@ function [Winding, P] = windingResistance(Winding)
     
     P = 0; % initialize total loss in all windings to 0 for summation
     
+    % create inputdlg structure for iterated input dialog
+    inputStruct = struct();
+    inputStruct.prompt = {'Primary winding', 'termination (flag) length [mm]:'; ...
+                          'Secondary winding', 'termination (flag) length [mm]:'};
+    inputStruct.dlgtitle = 'Flag Lengths';
+    inputStruct.definput = 100;
+    inputStruct.np = nwp;
+    inputStruct.ns = nws;
+    
+    % gather responses for flag lengths
+    answer = createWindingInput(inputStruct);
+    
     % Primary winding(s)
     if isequal(nwp, 1)
-        % request winding termination length
-        answer = inputdlg('Primary winding termination (flag) length [mm]:', ...
-                          'Primary Flag Length', ...
-                          1, ...
-                          {'100'});
         thisP.flagLength = str2double(answer{1})*1e-3;
         
         % geometry and counts
@@ -57,48 +64,38 @@ function [Winding, P] = windingResistance(Winding)
         thisP.P_Cu = Pw*FR;
         P = P + thisP.P_Cu; % sum to total copper loss
     else
-        for w = 1:nwp
-            % request winding termination length
-            answer = inputdlg(sprintf('Primary winding %d termination (flag) length [mm]:', w), ...
-                              sprintf('Primary %d Flag Length', w), ...
-                              1, ...
-                              {'100'});
-            thisP(w).flagLength = str2double(answer{1})*1e-3;
+        for p = 1:nwp
+            thisP(p).flagLength = str2double(answer{p})*1e-3;
             
             % geometry and counts
-            ds = thisP(w).d_s;
-            dl = dref*alf*(thisP(w).d_s/dref)^bet; % layer diameter (strand outer diameter)
-            k = thisP(w).N_s; % number of strands
-            length = thisP(w).length + thisP(w).flagLength; % length of winding
+            ds = thisP(p).d_s;
+            dl = dref*alf*(thisP(p).d_s/dref)^bet; % layer diameter (strand outer diameter)
+            k = thisP(p).N_s; % number of strands
+            length = thisP(p).length + thisP(p).flagLength; % length of winding
 
             % DC resistance and loss
             RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
-            RwDC = RsDC/(k*thisP(w).NPW); % DC resistance of winding
-            Pw = RwDC*thisP(w).I_pRMS^2; % DC loss of winding
+            RwDC = RsDC/(k*thisP(p).NPW); % DC resistance of winding
+            Pw = RwDC*thisP(p).I_pRMS^2; % DC loss of winding
 
             % Dowell's equation
-            Nl = thisP(w).N_L; % number of layers
-            deltaw = thisP(w).delta_p; % skin depth of current in winding
+            Nl = thisP(p).N_L; % number of layers
+            deltaw = thisP(p).delta_p; % skin depth of current in winding
             Nll = Nl*sqrt(k); % effective number of strand layers (square)
 
             A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
             FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
 
-            thisP(w).R_DC = RwDC;
-            thisP(w).R = RwDC*FR;
-            thisP(w).P_Cu = Pw*FR;
-            P = P + thisP(w).P_Cu;
+            thisP(p).R_DC = RwDC;
+            thisP(p).R = RwDC*FR;
+            thisP(p).P_Cu = Pw*FR;
+            P = P + thisP(p).P_Cu;
         end
     end
     
     % Secondary winding(s)
     if isequal(nws, 1)
-        % request winding termination length
-        answer = inputdlg('Secondary winding termination (flag) length [mm]:', ...
-                          'Secondary Flag Length', ...
-                          1, ...
-                          {'100'});
-        thisS.flagLength = str2double(answer{1})*1e-3;
+        thisS.flagLength = str2double(answer{2})*1e-3;
         
         % geometry and counts
         ds = thisS.d_s;
@@ -125,37 +122,32 @@ function [Winding, P] = windingResistance(Winding)
         thisS.P_Cu = Pw*FR;
         P = P + thisS.P_Cu; % sum to total copper loss
     else
-        for w = 1:nws
-            % request winding termination length
-            answer = inputdlg(sprintf('Secondary winding %d termination (flag) length [mm]:', w), ...
-                              sprintf('Secondary %d Flag Length', w), ...
-                              1, ...
-                              {'100'});
-            thisS(w).flagLength = str2double(answer{1})*1e-3;
+        for s = 1:nws
+            thisS(s).flagLength = str2double(answer{p + s})*1e-3;
             
             % geometry and counts
-            ds = thisS(w).d_s;
-            dl = dref*alf*(thisS(w).d_s/dref)^bet; % layer diameter (strand outer diameter)
-            k = thisS(w).N_s; % number of strands
-            length = thisS(w).length + thisS(w).flagLength; % length of winding
+            ds = thisS(s).d_s;
+            dl = dref*alf*(thisS(s).d_s/dref)^bet; % layer diameter (strand outer diameter)
+            k = thisS(s).N_s; % number of strands
+            length = thisS(s).length + thisS(s).flagLength; % length of winding
 
             % DC resistance and loss
             RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
-            RwDC = RsDC/(k*thisS(w).NPW); % DC resistance of winding
-            Pw = RwDC*thisS(w).I_sRMS^2; % DC loss of winding
+            RwDC = RsDC/(k*thisS(s).NPW); % DC resistance of winding
+            Pw = RwDC*thisS(s).I_sRMS^2; % DC loss of winding
 
             % Dowell's equation
-            Nl = thisS(w).N_L; % number of layers
-            deltaw = thisS(w).delta_s; % skin depth of current in winding
+            Nl = thisS(s).N_L; % number of layers
+            deltaw = thisS(s).delta_s; % skin depth of current in winding
             Nll = Nl*sqrt(k); % effective number of strand layers (square)
 
             A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
             FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
 
-            thisS(w).R_DC = RwDC;
-            thisS(w).R = RwDC*FR;
-            thisS(w).P_Cu = Pw*FR;
-            P = P + thisS(w).P_Cu;
+            thisS(s).R_DC = RwDC;
+            thisS(s).R = RwDC*FR;
+            thisS(s).P_Cu = Pw*FR;
+            P = P + thisS(s).P_Cu;
         end
     end
     
