@@ -68,7 +68,7 @@ function Winding = constructWinding(Transformer)
             bifAnswer = '';
 
             while isequal(bifAnswer, '')                
-                bifAnswer = questdlg(['Primary ', num2str(idx), ' Bifilar-wound?');
+                bifAnswer = questdlg(['Primary ', num2str(idx), ' Bifilar-wound?']);
 
                 if isequal(bifAnswer, 'Yes')
                     thisP(idx).bifilar = 2;
@@ -112,7 +112,7 @@ function Winding = constructWinding(Transformer)
             bifAnswer = '';
 
             while isequal(bifAnswer, '')
-                bifAnswer = questdlg('Secondary ', num2str(idx), ' Bifilar-wound?');
+                bifAnswer = questdlg(['Secondary ', num2str(idx), ' Bifilar-wound?']);
 
                 if isequal(bifAnswer, 'Yes')
                     thisS(idx).bifilar = 2;
