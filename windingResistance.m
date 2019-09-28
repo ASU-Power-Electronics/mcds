@@ -42,8 +42,9 @@ function [Winding, P] = windingResistance(Winding)
         % geometry and counts
         ds = thisP.d_s;
         dl = dref*alf*(thisP.d_s/dref)^bet; % layer diameter (strand outer diameter)
-        k = thisP.N_s; % number of strands
+        k = thisP.N_s/thisP.NPW; % number of strands per bundle
         length = thisP.length + thisP.flagLength; % length of winding
+        Fi = thisP.F_i; % interleaving factor, correction to Dowell
 
         % DC resistance and loss
         RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
@@ -53,10 +54,16 @@ function [Winding, P] = windingResistance(Winding)
         % Dowell's equation
         Nl = thisP.N_L; % number of layers
         deltaw = thisP.delta_p; % skin depth of current in winding
-        Nll = Nl*sqrt(k); % effective number of strand layers (square)
+        Nll = Nl*sqrt(k)/Fi; % effective number of strand layers (square)
 
         A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
-        FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
+        FR_d = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)));
+        FR_p = A*((2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
+        FR = FR_d + FR_p;
+        
+        thisP.FR_d = FR_d;
+        thisP.FR_p = FR_p;
+        thisP.FR = FR;
 
         % resistance and copper loss
         thisP.R_DC = RwDC;
@@ -70,8 +77,9 @@ function [Winding, P] = windingResistance(Winding)
             % geometry and counts
             ds = thisP(p).d_s;
             dl = dref*alf*(thisP(p).d_s/dref)^bet; % layer diameter (strand outer diameter)
-            k = thisP(p).N_s; % number of strands
+            k = thisP(p).N_s/thisP(p).NPW; % number of strands per bundle
             length = thisP(p).length + thisP(p).flagLength; % length of winding
+            Fi = thisP(p).F_i; % interleaving factor, correction to Dowell
 
             % DC resistance and loss
             RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
@@ -81,10 +89,16 @@ function [Winding, P] = windingResistance(Winding)
             % Dowell's equation
             Nl = thisP(p).N_L; % number of layers
             deltaw = thisP(p).delta_p; % skin depth of current in winding
-            Nll = Nl*sqrt(k); % effective number of strand layers (square)
+            Nll = Nl*sqrt(k)/Fi; % effective number of strand layers (square)
 
             A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
-            FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
+            FR_d = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)));
+            FR_p = A*((2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
+            FR = FR_d + FR_p;
+
+            thisP(p).FR_d = FR_d;
+            thisP(p).FR_p = FR_p;
+            thisP(p).FR = FR;
 
             thisP(p).R_DC = RwDC;
             thisP(p).R = RwDC*FR;
@@ -100,8 +114,9 @@ function [Winding, P] = windingResistance(Winding)
         % geometry and counts
         ds = thisS.d_s;
         dl = dref*alf*(thisS.d_s/dref)^bet; % layer diameter (strand outer diameter)
-        k = thisS.N_s; % number of strands
+        k = thisS.N_s/thisS.NPW; % number of strands per bundle
         length = thisS.length + thisS.flagLength; % length of winding
+        Fi = thisS.F_i; % interleaving factor, correction to Dowell
 
         % DC resistance and loss
         RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
@@ -111,10 +126,16 @@ function [Winding, P] = windingResistance(Winding)
         % Dowell's equation
         Nl = thisS.N_L; % number of layers
         deltaw = thisS.delta_s; % skin depth of current in winding
-        Nll = Nl*sqrt(k); % effective number of strand layers (square)
+        Nll = Nl*sqrt(k)/Fi; % effective number of strand layers (square)
 
         A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
-        FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
+        FR_d = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)));
+        FR_p = A*((2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
+        FR = FR_d + FR_p;
+        
+        thisS.FR_d = FR_d;
+        thisS.FR_p = FR_p;
+        thisS.FR = FR;
 
         % resistance and copper loss
         thisS.R_DC = RwDC;
@@ -128,8 +149,9 @@ function [Winding, P] = windingResistance(Winding)
             % geometry and counts
             ds = thisS(s).d_s;
             dl = dref*alf*(thisS(s).d_s/dref)^bet; % layer diameter (strand outer diameter)
-            k = thisS(s).N_s; % number of strands
+            k = thisS(s).N_s/thisS(s).NPW; % number of strands per bundle
             length = thisS(s).length + thisS(s).flagLength; % length of winding
+            Fi = thisS(s).F_i; % interleaving factor, correction to Dowell
 
             % DC resistance and loss
             RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
@@ -139,10 +161,16 @@ function [Winding, P] = windingResistance(Winding)
             % Dowell's equation
             Nl = thisS(s).N_L; % number of layers
             deltaw = thisS(s).delta_s; % skin depth of current in winding
-            Nll = Nl*sqrt(k); % effective number of strand layers (square)
+            Nll = Nl*sqrt(k)/Fi; % effective number of strand layers (square)
 
             A = (pi/4)^0.75*dl/deltaw*sqrt(eta);
-            FR = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)) + (2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
+            FR_d = A*((sinh(2*A) + sin(2*A))/(cosh(2*A) - cos(2*A)));
+            FR_p = A*((2*(Nll^2 - 1)/3)*((sinh(A) - sin(A))/(cosh(A) + cos(A))));
+            FR = FR_d + FR_p;
+
+            thisS(s).FR_d = FR_d;
+            thisS(s).FR_p = FR_p;
+            thisS(s).FR = FR;
 
             thisS(s).R_DC = RwDC;
             thisS(s).R = RwDC*FR;

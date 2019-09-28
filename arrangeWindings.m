@@ -31,7 +31,9 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
     end
 
     % check conditions for interleaved winding eligibility
-    isEligibleForInterleave = isequal(N_Lp, N_Ls) || isequal(N_Lp, N_Ls + 1);
+    isEligibleForInterleave = (isequal(N_Lp, N_Ls) || ...
+                               isequal(N_Lp, N_Ls + 1)) && ...
+                               N_Lp > 1;
 
     if isEligibleForInterleave
         windingStructure = questdlg('Simple or interleaved winding structure?', ...
@@ -51,6 +53,9 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
 
     switch windingStructure
         case 'Simple' % direct concentric (PPP...SSS...)
+            [thisP(:).F_i] = 1; % interleaving factor, correction to Dowell
+            [thisS(:).F_i] = 1;
+            
             if nwp > 1
                 bifMatch = 0;
 
@@ -203,6 +208,15 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
             pCurrentLayer = 1;
             sIDX = 1;
             sCurrentLayer = 1;
+            
+             % interleaving factor, correction to Dowell
+            for p = 1:nwp
+                thisP(p).F_i = N_Lp;
+            end
+            
+            for s = 1:nws
+                thisS(s).F_i = N_Ls;
+            end
             
             % build layer diameter array
             for layer = 1:(N_Lp + N_Ls)
