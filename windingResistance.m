@@ -14,6 +14,7 @@ function [Winding, P] = windingResistance(Winding)
     [~, nwp] = size(thisP);
     [~, nws] = size(thisS);
 
+    FlitzL = 1.05; % twisting pitch correction for litz wire
     eta = 0.75;  % porosity factor (approximation ~5% for small d_s)
     
     % Strand outer diameters from Sullivan (1999)
@@ -47,7 +48,7 @@ function [Winding, P] = windingResistance(Winding)
         Fi = thisP.F_i; % interleaving factor, correction to Dowell
 
         % DC resistance and loss
-        RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
+        RsDC = 4*RHO_CU*length*FlitzL/(pi*ds^2); % DC resistance of strand
         RwDC = RsDC/(k*thisP.NPW); % DC resistance of winding
         Pw = RwDC*thisP.I_pRMS^2; % DC loss of winding
 
@@ -82,7 +83,7 @@ function [Winding, P] = windingResistance(Winding)
             Fi = thisP(p).F_i; % interleaving factor, correction to Dowell
 
             % DC resistance and loss
-            RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
+            RsDC = 4*RHO_CU*length*FlitzL/(pi*ds^2); % DC resistance of strand
             RwDC = RsDC/(k*thisP(p).NPW); % DC resistance of winding
             Pw = RwDC*thisP(p).I_pRMS^2; % DC loss of winding
 
@@ -119,7 +120,7 @@ function [Winding, P] = windingResistance(Winding)
         Fi = thisS.F_i; % interleaving factor, correction to Dowell
 
         % DC resistance and loss
-        RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
+        RsDC = 4*RHO_CU*length*FlitzL/(pi*ds^2); % DC resistance of strand
         RwDC = RsDC/(k*thisS.NPW); % DC resistance of winding
         Pw = RwDC*thisS.I_sRMS^2; % DC loss of winding
 
@@ -154,7 +155,7 @@ function [Winding, P] = windingResistance(Winding)
             Fi = thisS(s).F_i; % interleaving factor, correction to Dowell
 
             % DC resistance and loss
-            RsDC = 4*RHO_CU*length/(pi*ds^2); % DC resistance of strand
+            RsDC = 4*RHO_CU*length*FlitzL/(pi*ds^2); % DC resistance of strand
             RwDC = RsDC/(k*thisS(s).NPW); % DC resistance of winding
             Pw = RwDC*thisS(s).I_sRMS^2; % DC loss of winding
 
