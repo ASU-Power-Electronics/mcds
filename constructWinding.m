@@ -162,7 +162,7 @@ function Winding = constructWinding(Transformer)
         polarplot(0:pi/180:2*pi, coreRadius*ones(1, 361), ...
                   'LineWidth', 2, 'Color', 'k');
         polarplot(0:pi/180:2*pi, (coreRadius + tBobbin)*ones(1, 361), ...
-                  'LineWidth', 2, 'Color', ones(1, 2)/sqrt(2));
+                  'LineWidth', 2, 'Color', ones(1, 3)/sqrt(2));
         hold on
 
         if nwp > 1
