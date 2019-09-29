@@ -1014,7 +1014,7 @@ clear thisC thisW thisP
 %TODO: add state space model calculation
 %TODO: add support for different types of windings and also calculate porosity
 %      in windingResistance
-%TODO: Implement simple thermal model (Kazimierczuk 464-465)
+%TODO: Implement simple thermal model (Kazimierczuk 370-374, 464-465, Hurley 1998)
 
 thisC = Converter;
 thisR = Transformer.core;
@@ -1170,6 +1170,8 @@ thisP.P_Fe = thisR.P_V*thisR.V_e;
 thisP.P = thisP.P_Fe + thisP.P_Cu;
 thisP.eta = (thisC.P_o - thisP.P)/thisC.P_o;
 
+[thisP.T, thisP.DeltaT] = computeTempRise(thisP, thisR, thisW);
+
 figure
 plot(Time.t, thisW.B)
 grid on
@@ -1182,7 +1184,7 @@ ylabel('B [T]')
 legend('B_{approx.}', 'B_{core}')
 
 % compute equivalent core resistance and display it and winding resistances
-thisR.R_s = rms((vLmPri + vLmSec)/2)^2/thisP.P_Fe;
+thisR.R_s = computePERMS((vLmPri + vLmSec)/2)^2/thisP.P_Fe;
 fprintf('\nEquivalent Core Resistance (Ohm):  %g\n', thisR.R_s)
 
 if nwp > 1
@@ -1202,10 +1204,11 @@ else
 end
 
 fprintf('\nLoss Analysis:\n')
-fprintf('Copper Losses (W):  %g\n', thisP.P_Cu)
-fprintf('Core Losses (W):  %g\n', thisP.P_Fe)
-fprintf('Total Losses (W):  %g\n', thisP.P)
+fprintf('Copper Losses:  %g W\n', thisP.P_Cu)
+fprintf('Core Losses:  %g W\n', thisP.P_Fe)
+fprintf('Total Losses:  %g W\n', thisP.P)
 fprintf('Transformer Efficiency:  %g %%\n', thisP.eta*100)
+fprintf('Temperature Rise: %g \260C\n', thisP.DeltaT)
 
 thisW.primary = orderfields(thisW.primary);
 thisW.secondary = orderfields(thisW.secondary);
