@@ -446,7 +446,6 @@ clear temp thisC thisT Kg
 % * $A_p$: area product (available from data sheet if former/bobbin exists) in
 % [m^4]
 % * $MLT$: mean-length turn (including former/bobbin) in [m]
-%TODO: find existing core if name/params are the same and edit in selectCore.m
 
 thisC = Transformer.core;
 thisP = Transformer.properties;
@@ -556,7 +555,7 @@ Transformer.core = orderfields(thisC);
 Transformer.properties = orderfields(thisP);
 Transformer.winding = orderfields(thisW);
 clear thisC thisP thisW r h b N nwp nws selectCore p s
-clear inputDefs inputDims inputPrompts
+clear resp inputStruct
 
 %%
 % *Initial Wire Selection*
@@ -1014,7 +1013,6 @@ clear thisC thisW thisP
 %TODO: add state space model calculation
 %TODO: add support for different types of windings and also calculate porosity
 %      in windingResistance
-%TODO: Implement simple thermal model (Kazimierczuk 370-374, 464-465, Hurley 1998)
 
 thisC = Converter;
 thisR = Transformer.core;

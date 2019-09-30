@@ -116,46 +116,48 @@ function Core = selectCore(Core, Properties)
                                          'Effective volume [mm^3]', ...
                                          'Effective length [mm]', ...
                                          'Effective area [mm^2]', ...
-                                         'Center leg height [mm]', ...
-                                         'Center leg depth [mm]', ...
-                                         'Window breadth [mm]', ...
-                                         'Window height [mm]', ...
                                          'Bobbin breadth [mm] (optional)', ...
-                                         'Bobbin height [mm] (optional)'}, ...
+                                         'Bobbin diameter [mm] (optional)'}, ...
                                         'Core Data Input', 1, ...
-                                        {'none', '0', '0', '0', '0', '0', '0', '0', '0', '', ''});
+                                        {'none', 'round/rectangular', '0', '0', '0', '', ''});
+                    [geometry, As, measures] = getGeometry(coreData{1});
+                    
                     % store data
                     Core.name = coreData{1};
+                    Core.c_leg_type = coreData{2};
                     Core.V_e = str2double(coreData{3})*1e-9;
                     Core.l_e = str2double(coreData{4})*1e-3;
                     Core.A_e = str2double(coreData{5})*1e-6;
-                    Core.d_center = str2double(coreData{6})*1e-3;
-                    Core.d_center2 = str2double(coreData{7})*1e-3;
-                    Core.window.breadth = str2double(coreData{8})*1e-3;
-                    Core.window.height = str2double(coreData{9})*1e-3;
+                    Core.A_s = As;
+                    Core.geometry = geometry;
                     
+                    % extract and/or compute
+                    Core.d_center = measures.d_center;
+                    Core.d_center2 = measures.d_center2;
+                    Core.window = measures.window;
+
                     % calculate remaining data
                     if ~isequal(coreData{10}, '')
                         Core.bobbin.breadth = str2double(coreData{10})*1e-3;
                     else
                         Core.bobbin.breadth = Core.window.breadth - 1e-3;
                     end
-                    
+
                     if ~isequal(coreData{11}, '')
                         Core.bobbin.height = str2double(coreData{11})*1e-3;
                     else
                         Core.bobbin.height = Core.window.height - 0.5e-3;
                     end
-                    
+
                     Core.W_a = Core.bobbin.breadth*Core.bobbin.height;
-                    
-                    if isequal(coreData{2}, 'round')
+
+                    if strcmp(coreData{2}, 'round')
                         Core.MLT = pi*(Core.d_center + Core.window.height);
                     else
                         offset = Core.window.height/2;
                         Core.MLT = 2*(Core.d_center + Core.d_center2) + 8*offset;
                     end
-                    
+
                     Core.A_p = Core.A_e*Core.W_a;
                     Core.K_g = Core.A_p*Core.A_e*0.3/Core.MLT; % K_u = 0.3
                     
@@ -184,10 +186,20 @@ function Core = selectCore(Core, Properties)
                     saveIt = questdlg('Save this core?', 'Save Core');
                     
                     if isequal(saveIt, 'Yes')
-                        coreSaver.materials = {Core.material.main.material};
-                        coreSaver = rmfield(coreSaver, 'material');
-                        coreSaver.c_leg_type = coreData{2};
-                        Cores(numCoresOrig + 1) = coreSaver;
+                        % check for existing core
+                        if ismember(coreData{1}, [Cores(:).name])
+                            idx = strcmp({Cores(:).name}, coreData{1});
+                            
+                            if ~ismember(Core.material.main.material, Cores(idx).materials(:))
+                                Cores(idx).materials = [Cores(idx).materials(:)', {Core.material.main.material}];
+                            end
+                        else
+                            coreSaver.materials = {Core.material.main.material};
+                            coreSaver = rmfield(coreSaver, 'material');
+                            coreSaver.c_leg_type = coreData{2};
+                            Cores(numCoresOrig + 1) = coreSaver;
+                        end
+                        
                         save('Cores.mat', 'Cores')
                     end
                 end
