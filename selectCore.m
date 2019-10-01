@@ -6,7 +6,6 @@
 % diamater for round center legs, and window height + center leg distance for
 % rectangular cores in both x and y directions, for 4 segments equalling one
 % full turn passing through the center of the window.
-%TODO: find existing core if name/params are the same and edit
 
 function Core = selectCore(Core, Properties)
     material = Core.material; % placeholder
@@ -137,14 +136,14 @@ function Core = selectCore(Core, Properties)
                     Core.window = measures.window;
 
                     % calculate remaining data
-                    if ~isequal(coreData{10}, '')
-                        Core.bobbin.breadth = str2double(coreData{10})*1e-3;
+                    if ~isequal(coreData{6}, '')
+                        Core.bobbin.breadth = str2double(coreData{6})*1e-3;
                     else
                         Core.bobbin.breadth = Core.window.breadth - 1e-3;
                     end
 
-                    if ~isequal(coreData{11}, '')
-                        Core.bobbin.height = str2double(coreData{11})*1e-3;
+                    if ~isequal(coreData{7}, '')
+                        Core.bobbin.height = str2double(coreData{7})*1e-3;
                     else
                         Core.bobbin.height = Core.window.height - 0.5e-3;
                     end
@@ -187,7 +186,7 @@ function Core = selectCore(Core, Properties)
                     
                     if isequal(saveIt, 'Yes')
                         % check for existing core
-                        if ismember(coreData{1}, [Cores(:).name])
+                        if ismember(coreData{1}, {Cores(:).name})
                             idx = strcmp({Cores(:).name}, coreData{1});
                             
                             if ~ismember(Core.material.main.material, Cores(idx).materials(:))

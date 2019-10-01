@@ -638,7 +638,7 @@ if nwp > 1
         if ~isempty(GLstruct.P(idx).constructions) && ~isempty(fieldnames(GLstruct.P(idx).constructions))
             Tp = makeConsTable(Tp, GLstruct.P(idx).constructions);
         else
-            fprintf('No suggestions for primary winding %d.\n', idx)
+            fprintf('Construct custom wire arrangement for primary winding %d.\n', idx)
         end
     end
 else
@@ -649,7 +649,7 @@ else
     if ~isempty(fieldnames(GLstruct.P.constructions))
         Tp = makeConsTable(Tp, GLstruct.P.constructions);
     else
-        fprintf('No suggestions for primary winding.\n')
+        fprintf('Construct custom wire arrangement for primary winding.\n')
     end
 end
 
@@ -664,7 +664,7 @@ if nws > 1
         if ~isempty(GLstruct.S(idx).constructions) && ~isempty(fieldnames(GLstruct.S(idx).constructions))
             Ts = makeConsTable(Ts, GLstruct.S(idx).constructions);
         else
-            fprintf('No suggestions for secondary winding %d.\n', idx)
+            fprintf('Construct custom wire arrangement for secondary winding %d.\n', idx)
         end
     end
 else
@@ -675,7 +675,7 @@ else
     if ~isempty(fieldnames(GLstruct.S.constructions))
         Ts = makeConsTable(Ts, GLstruct.S.constructions);
     else
-        fprintf('No suggestions for secondary winding.\n')
+        fprintf('Construct custom wire arrangement for secondary winding.\n')
     end
 end
 

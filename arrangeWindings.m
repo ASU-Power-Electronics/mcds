@@ -229,6 +229,7 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                             
                             if pCurrentLayer < thisP(pIDX).N_L                                
                                 lastDiameter = lastDiameter + 2*thisP(pIDX).d_o;
+                                pCurrentLayer = pCurrentLayer + 1;
                             else
                                 d_Pout = lastDiameter + 2*thisP(pIDX).d_o;
                                 lastDiameter = d_Pout + Wgap;
@@ -260,6 +261,7 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                             
                             if pCurrentLayer < thisP.N_L                                
                                 lastDiameter = lastDiameter + 2*thisP.d_o;
+                                pCurrentLayer = pCurrentLayer + 1;
                             else
                                 d_Pout = lastDiameter + 2*thisP.d_o;
                                 lastDiameter = d_Pout + Wgap;
@@ -285,6 +287,7 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                             
                             if sCurrentLayer < thisS(sIDX).N_L                                
                                 lastDiameter = lastDiameter + 2*thisS(sIDX).d_o;
+                                sCurrentLayer = sCurrentLayer + 1;
                             else
                                 d_Sout = lastDiameter + 2*thisS(sIDX).d_o;
                                 lastDiameter = d_Sout + Wgap;
@@ -317,10 +320,11 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
                             
                             if sCurrentLayer < thisS.N_L                                
                                 lastDiameter = lastDiameter + 2*thisS.d_o;
+                                sCurrentLayer = sCurrentLayer + 1;
                             else
                                 d_Sout = lastDiameter + 2*thisS.d_o;
                                 lastDiameter = d_Sout + Wgap;
-                                thisS.diameter = (d_Pin + d_Pout)/2;
+                                thisS.diameter = (d_Sin + d_Sout)/2;
                 
                                 if strcmp(Core.c_leg_type, 'rectangular')
                                     c = thisS.diameter;
@@ -339,14 +343,14 @@ function [thisP, thisS] = arrangeWindings(thisP, nwp, thisS, nws, Wgap, Core)
             
             % quick check that winding height < window height
             if strcmp(Core.c_leg_type, 'round')
-                if ~(lastDiameter < Core.d_center + 2*Core.window.height)
+                if lastDiameter > Core.d_center + 2*Core.window.height
                     warning('Windings exceed window height as arranged.')
                 end
             else
                 hWp = [thisP(:).N_L]'*[thisP(:).d_o];
                 hWs = [thisS(:).N_L]'*[thisS(:).d_o];
                 
-                if ~(hWp + hWs < Core.window.height)
+                if hWp + hWs > Core.window.height
                     warning('Windings exceed window height as arranged.')
                 end
             end

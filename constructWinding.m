@@ -239,7 +239,7 @@ function Winding = constructWinding(Transformer)
             posVec = [-offsetX - hW/2, -offsetY - hW/2, ...
                       2*offsetX + hW, 2*offsetY + hW];
             rectangle('Position', posVec, 'Curvature', 0.2, ...
-                      'EdgeColor', colorVals{idx})
+                      'EdgeColor', colorVals{1})
                 
             if isequal(Winding.primary.bifilar, 2)
                 bifpair = true;
@@ -275,7 +275,7 @@ function Winding = constructWinding(Transformer)
             posVec = [-offsetX - hW/2, -offsetY - hW/2, ...
                       2*offsetX + hW, 2*offsetY + hW];
             rectangle('Position', posVec, 'Curvature', 0.2, ...
-                      'EdgeColor', colorVals{idx})
+                      'EdgeColor', colorVals{2})
         end
         
         innerEdge = Core.window.height + Core.d_center/2;
