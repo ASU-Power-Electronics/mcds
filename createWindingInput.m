@@ -59,5 +59,5 @@ function response = createWindingInput(inputStruct)
     end
     
     dims = 1;
-    response = inputdlg(prompt, dlgtitle, dims, definput);
+    response = inputdlg(prompt, dlgtitle, dims, definput, 'on');
 end

@@ -56,7 +56,7 @@ function Core = selectCore(Core, Properties)
             minKgFit = min(KgFit(KgFit > 0));
             
             if isempty(minKgFit)
-                minKgFit = -min(abs(KgFit));
+                minKgFit = -min(abs(KgFit)); % take highest Kg less than KgMin
                 warning('No cores in database with Kg greater than minimum.  Results may be suboptimal.')
             end
             
@@ -118,7 +118,7 @@ function Core = selectCore(Core, Properties)
                                          'Bobbin breadth [mm] (optional)', ...
                                          'Bobbin diameter [mm] (optional)'}, ...
                                         'Core Data Input', 1, ...
-                                        {'none', 'round/rectangular', '0', '0', '0', '', ''});
+                                        {'none', 'round/rectangular', '0', '0', '0', '', ''}, 'on');
                     [geometry, As, measures] = getGeometry(coreData{1});
                     
                     % store data

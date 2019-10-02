@@ -126,7 +126,7 @@ switch button
                            'Duty Ratio [#]'}, ...
                           'Converter Parameters', ...
                           1, ...
-                          {'0', '0', '0', '0', '0', '0', '0', '0'});
+                          {'0', '0', '0', '0', '0', '0', '0', '0'}, 'on');
                       
         if isempty(answer) % cancel button handling
             error('Aborted, exiting design script.')
@@ -151,51 +151,6 @@ switch button
 end
 
 clear button
-
-%%
-% *Winding Base Parameters*
-% 
-% * $N_w$:  number of windings
-% * $N$:  transformer turns by winding
-
-% answer = inputdlg({'Number of primary windings', ...
-%                    'Number of turns in each primary winding (comma-separated)', ...
-%                    'Number of secondary windings', ...
-%                    'Number of turns in each secondary winding (comma-separated)'}, ...
-%                   'Transformer Windings and Turns', ...
-%                   1, ...
-%                   {'1', '1', '1', '1'});
-% 
-% thisW = Transformer.winding;
-% thisP = Transformer.properties;
-% pWindings = str2double(answer{1});
-% pTurns = str2num(answer{2}); % possibly non-scalar, using num instead of double
-% sWindings = str2double(answer{3});
-% sTurns = str2num(answer{4});
-% 
-% thisP.N_wp = pWindings;
-% thisP.N_ws = sWindings;
-% thisP.N_w = pWindings + sWindings;
-% 
-% if pWindings > 1
-%     for p = 1:pWindings
-%         thisW.primary(p).N = pTurns(p);
-%     end
-% else
-%     thisW.primary.N = pTurns;
-% end
-% 
-% if sWindings > 1
-%     for s = 1:sWindings
-%         thisW.secondary(s).N = sTurns(s);
-%     end
-% else
-%     thisW.secondary.N = sTurns;
-% end
-% 
-% Transformer.winding = orderfields(thisW);
-% Transformer.properties = orderfields(thisP);
-% clear thisW thisP answer pWindings pTurns sWindings sTurns p s
 
 %%
 % *Initial Transformer Waveforms*
@@ -251,28 +206,13 @@ Transformer.winding = orderfields(this);
 clear FileName PathName ptemp stemp tVec this getString
 
 %%
-% *Core Base Parameters*
-%
-% NOTE:  Material selection is almost exclusively frequency-based for a given
-% application.  Saturation flux density and inductance per turn are malleable,
-% since they depend on shape, so we can proceed immediately and without regret.
-%TODO: make better selection among similar options in coreMaterial.m
-
-Transformer.core.material = coreMaterial(Converter.f_s);
-Transformer.core.name = 'None';
-
-disp('Core Material:')
-disp(Transformer.core.material.main)
-
-clear coreMaterial % prevents memory access errors
-
-%%
 % *Transformer Base Properties*
 %
 % These values are required to initialize several of the calculations, but
 % nearly all will change as more information is obtained.  A catch-all for
 % transformer properties which do not apply only to core or windings, but the
-% transformer as a whole.
+% transformer as a whole.  Flux density is estimated using voltage and iterative
+% value for N to place it between 0.1 and 0.5 (common ferrite range).
 % 
 % * $B_pk$:  peak flux density in [T]
 % * $K_u$:  window utilization factor
@@ -280,12 +220,39 @@ clear coreMaterial % prevents memory access errors
 % * $\alpha$:  transformer regulation
 
 this = Transformer.properties;
-this.B_pk = 0.2;
+v = Transformer.winding.primary(1).waveform.v_p;
+N = 1;
+Bpk = max(abs(calculateFlux(v/N, Time.t)))/300e-6;
+
+while Bpk > 0.5
+    Bpk = max(abs(calculateFlux(v/N, Time.t)))/300e-6;
+    N = N + 1;
+end
+
+this.B_pk = Bpk;
 this.K_u = 0.3;
 this.eta = 0.99;
 this.alpha = (1 - this.eta)/2; % equate core and copper loss for max eta
 Transformer.properties = orderfields(this);
-clear this
+clear this v N Bpk
+
+%%
+% *Core Base Parameters*
+%
+% NOTE:  Material selection is almost exclusively frequency-based for a given
+% application.  Saturation flux density and inductance per turn are malleable,
+% since they depend on shape, so we can proceed immediately and without regret.
+% However, to avoid difficulty in configuration optimization, we will use
+% permeability and saturation flux density as secondary factors after finding
+% suitable materials based on frequency.
+
+Transformer.core.material = coreMaterial(Converter.f_s, Transformer.properties.B_pk);
+Transformer.core.name = 'None';
+
+disp('Core Material:')
+disp(Transformer.core.material.main)
+
+clear coreMaterial % prevents memory access errors
 
 %% Initial Variable Calculations
 % After user entry, additional values will be needed in order to begin the
@@ -452,7 +419,6 @@ thisP = Transformer.properties;
 thisW = Transformer.winding;
 
 thisC = selectCore(thisC, thisP);
-thisC.R = thisC.l_e/(thisC.material.main.mu_i*MU_0*thisC.A_e);
 thisP.A_p = thisC.W_a*thisC.A_e;
 
 fprintf('Core selected: %s\n\n', thisC.name)
@@ -498,6 +464,12 @@ else
     thisW.phi = calculateFlux(thisW.primary.waveform.v_p/N, Time.t);
 end
 
+% approximate B field in core area before windings are determined
+thisW.B = thisW.phi./thisC.A_e;
+thisP.B_pk = max(abs(thisW.B));
+thisC.mu_r = evaluatePermeability(thisC.material.main.mu_a, thisP.B_pk);
+thisC.R = thisC.l_e/(thisC.mu_r*MU_0*thisC.A_e);
+
 % approximate primary winding magnetizing current(s)
 if nwp > 1
     for idx = 1:nwp
@@ -519,10 +491,6 @@ else
     N = thisW.secondary.N;
     thisW.secondary.waveform.i_ms = thisW.phi.*thisC.R/N;
 end
-
-% approximate B field in core area before windings are determined
-thisW.B = thisW.phi./thisC.A_e;
-thisP.B_pk = max(abs(thisW.B));
 
 if ~thisC.W_a
     h = thisC.window.height;
@@ -1013,6 +981,8 @@ clear thisC thisW thisP
 %TODO: add state space model calculation
 %TODO: add support for different types of windings and also calculate porosity
 %      in windingResistance
+%TODO: need to iterate over B computation as mu and L values change until 
+%      delta < tol; also need to update reluctance
 
 thisC = Converter;
 thisR = Transformer.core;
@@ -1080,6 +1050,7 @@ thisR.phi = calculateFlux((vLmPri + vLmSec)/2, Time.t);
 thisR.MMF = thisR.phi*thisR.R;
 thisR.B = thisR.phi./thisR.A_e;
 thisP.B_pk = max(abs(thisR.B));
+thisR.mu_r = evaluatePermeability(thisR.material.main.mu_a, thisP.B_pk);
 
 % check peak magnetic field strength against saturation value
 passBsat = logical(thisP.B_pk < thisR.material.main.B_sat);

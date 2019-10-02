@@ -15,7 +15,7 @@ function result = guidelines(P, S, b, h)
     
     resp = inputdlg('Height of additional space/insulation between windings [mm]:', ...
                     'Adjust inter-winding space', ...
-                    1, {'0'});
+                    1, {'0'}, 'on');
 	result.Wgap = str2double(resp)*1e-3;
     h = h - (nwp + nws - 1)*result.Wgap;
     

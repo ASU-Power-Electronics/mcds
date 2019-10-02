@@ -49,7 +49,7 @@ function [geometry, As, measures] = getGeometry(name)
         defInput = {'0', '0', '0', '0', '0', '0'};
     end
     
-    resp = inputdlg(inputStr, 'Core Measurements', 1, defInput);
+    resp = inputdlg(inputStr, 'Core Measurements', 1, defInput, 'on');
     
     for r = 1:numel(resp)
         geometry.(inputStr{r}) = str2double(resp{r})*1e-3;

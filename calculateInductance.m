@@ -17,12 +17,12 @@ function [M, Ml] = calculateInductance(Windings, Core, N_w, f_s, tol)
     % core variable extraction
     length = Core.l_e;
     area = Core.A_e;
-    mu_i = Core.material.main.mu_i;
+    mu_r = Core.mu_r;
     sigma_c = 1/Core.material.main.rho;
     b = sqrt(area/pi); % core radius, circular cross-section transformation
     
     omega = 2*pi*f_s;
-    gamma_0 = sqrt(1j*omega*mu_i*MU_0*sigma_c);
+    gamma_0 = sqrt(1j*omega*mu_r*MU_0*sigma_c);
     gammaTerm = real(besseli(1, gamma_0*b)/(gamma_0*b*besseli(0, gamma_0*b)));
     
     % Inductance matrices, self/mutual, and leakage
@@ -46,9 +46,9 @@ function [M, Ml] = calculateInductance(Windings, Core, N_w, f_s, tol)
         end
         
         [Lab, Lal] = airInductance(N1, N1, A, A, length, GMDself, tol);
-        [Lcb, Lcl] = coreInductance(N1, N1, rIn1, rOut1, rIn1, rOut1, h1, w1, h1, w1, length, b, mu_i, sigma_c, omega, tol);
+        [Lcb, Lcl] = coreInductance(N1, N1, rIn1, rOut1, rIn1, rOut1, h1, w1, h1, w1, length, b, mu_r, sigma_c, omega, tol);
         
-        M(i, i) = Lab + Lal + Lcb*(gammaTerm - 1/mu_i) + Lcl;
+        M(i, i) = Lab + Lal + Lcb*(gammaTerm - 1/mu_r) + Lcl;
         Ml(i, i) = Lal + Lcl;
         
 %         fprintf('\nCoil %d\n', i)
@@ -74,9 +74,9 @@ function [M, Ml] = calculateInductance(Windings, Core, N_w, f_s, tol)
                 GMD = R - A;
                 
                 [Mab, Mal] = airInductance(N1, N2, A, R, length, GMD, tol);
-                [Mcb, Mcl] = coreInductance(N1, N2, rIn1, rOut1, rIn2, rOut2, h1, w1, h2, w2, length, b, mu_i, sigma_c, omega, tol);
+                [Mcb, Mcl] = coreInductance(N1, N2, rIn1, rOut1, rIn2, rOut2, h1, w1, h2, w2, length, b, mu_r, sigma_c, omega, tol);
         
-                M(i, j) = Mab + Mal + Mcb*(gammaTerm - 1/mu_i) + Mcl;
+                M(i, j) = Mab + Mal + Mcb*(gammaTerm - 1/mu_r) + Mcl;
                 M(j, i) = M(i, j);
                 Ml(i, j) = Mal + Mcl;
                 Ml(j, i) = Ml(i, j);
