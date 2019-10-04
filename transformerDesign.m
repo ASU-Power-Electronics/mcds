@@ -212,7 +212,8 @@ clear FileName PathName ptemp stemp tVec this getString
 % nearly all will change as more information is obtained.  A catch-all for
 % transformer properties which do not apply only to core or windings, but the
 % transformer as a whole.  Flux density is estimated using voltage and iterative
-% value for N to place it between 0.1 and 0.5 (common ferrite range).
+% value for N to place it between 0.1 and 0.5 (common ferrite range) using a
+% core of average cross-sectional area.
 % 
 % * $B_pk$:  peak flux density in [T]
 % * $K_u$:  window utilization factor
@@ -246,13 +247,15 @@ clear this v N Bpk
 % permeability and saturation flux density as secondary factors after finding
 % suitable materials based on frequency.
 
-Transformer.core.material = coreMaterial(Converter.f_s, Transformer.properties.B_pk);
+Bpk = Transformer.properties.B_pk;
+Transformer.core.material = coreMaterial(Converter.f_s, Bpk);
 Transformer.core.name = 'None';
 
 disp('Core Material:')
 disp(Transformer.core.material.main)
 
 clear coreMaterial % prevents memory access errors
+clear Bpk
 
 %% Initial Variable Calculations
 % After user entry, additional values will be needed in order to begin the
@@ -365,8 +368,8 @@ fprintf('\nSFDT Input Values:\n')
 fprintf('Minimum throughput power:  %g W\n', thisT.properties.P_t)
 fprintf('Maximum throughput power:  %g W\n', 2*thisT.properties.P_t)
 fprintf('Converter operating frequency:  %g kHz\n', thisC.f_s*1e-3)
-fprintf('Ambient temperature:  25 degrees C\n')
-fprintf('Allowed temperature rise:  %g degrees C\n', temp)
+fprintf('Ambient temperature:  25 \260C\n')
+fprintf('Allowed temperature rise:  %g \260C\n', temp)
 fprintf('Converter type:  Half-Bridge --> Push-Pull\n')
 fprintf('Copper fill factor:  0.3\n')
 fprintf('Effective duty factor:  %g\n\n', thisC.D)
@@ -982,7 +985,7 @@ clear thisC thisW thisP
 %TODO: add support for different types of windings and also calculate porosity
 %      in windingResistance
 %TODO: need to iterate over B computation as mu and L values change until 
-%      delta < tol; also need to update reluctance
+%      delta < tol; also need to update reluctance each step
 
 thisC = Converter;
 thisR = Transformer.core;

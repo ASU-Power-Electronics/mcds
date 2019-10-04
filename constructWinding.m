@@ -123,7 +123,7 @@ function Winding = constructWinding(Transformer)
                 end
             end
 
-            answerFrag = split(answer{idx}, {' ', ','});
+            answerFrag = split(answer{nwp + idx}, {' ', ','});
             thisS(idx) = computeGeometry(thisS(idx), bb, answerFrag);
 
             Winding.A_Cu = Winding.A_Cu + thisS(idx).A_Cu;

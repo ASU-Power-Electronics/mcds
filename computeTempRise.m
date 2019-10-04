@@ -20,13 +20,13 @@ function [T, DT] = computeTempRise(P, C, W)
     % Primary
     twp = [W.primary.N_L]*[W.primary.d_o]'; % Primary winding thickness (height) [m]
     kwp = 1/2.5; % Primary winding thermal conductivity [W/(m°C)]
-    Aswp = pi*([W.primary.NPW] + [W.primary.tpl] - 1)*[W.primary.d_o]'; % Primary winding surface area [m^2]
+    Aswp = pi*([W.primary.NPW].*[W.primary.tpl] + [W.primary.N_L] - 1).*[W.primary.d_o]*([W.primary.length]./[W.primary.N])'; % Primary winding surface area [m^2]
     thetaP = twp/(kwp*Aswp); % Primary winding(s) thermal resistance [°C/W]
     
     % Secondary
     tws = [W.secondary.N_L]*[W.secondary.d_o]'; % Secondary winding(s) thickness (height) [m]
     kws = 1/2.5; % Secondary winding(s) thermal conductivity [W/(m°C)]
-    Asws = pi*([W.secondary.NPW] + [W.secondary.tpl] - 1)*[W.secondary.d_o]'; % Secondary winding(s) surface area [m^2]
+    Asws = pi*([W.secondary.NPW].*[W.secondary.tpl] + [W.secondary.N_L] - 1).*[W.secondary.d_o]*([W.secondary.length]./[W.secondary.N])'; % Secondary winding(s) surface area [m^2]
     thetaS = tws/(kws*Asws); % Secondary winding(s) thermal resistance [°C/W]
     thetaSA = 1/10; % Secondary winding(s) to ambient thermal resistance [°C/W]
     
