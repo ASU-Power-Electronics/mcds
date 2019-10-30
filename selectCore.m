@@ -143,7 +143,7 @@ function Core = selectCore(Core, Properties)
                     end
 
                     if ~isequal(coreData{7}, '')
-                        Core.bobbin.height = str2double(coreData{7})*1e-3;
+                        Core.bobbin.height = (2*Core.window.height + Core.d_center - str2double(coreData{7})*1e-3)/2;
                     else
                         Core.bobbin.height = Core.window.height - 0.5e-3;
                     end

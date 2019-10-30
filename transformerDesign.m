@@ -1,18 +1,19 @@
 %% Transformer Design Script
 % *R. Scott Mongrain*
-% - _June 2016-September 2019_
+% - _June 2016-October 2019_
+%
+% Transferred to ASU Power Electronics organization October 2019.
 %
 % This program is a tool for use in designing power electronics magnetic
-% components (specifically transformers and inductors of various descriptions).
+% components (specifically transformers of various descriptions).
 %
 % In round figures, the design process goes as follows:
 % 
 % # Design converter with ideal transformer (PLECS preferred)
 % # Provide design values and waveforms
-% # Obtain SFDT input
-% # Run SFDT, return with core values (or allow automatic selection)
-% # Obtain LitzOpt input
-% # Run LitzOpt, return with wire values
+% # Select core manually or automatically with guidance
+% # Obtain LitzOpt input and run
+% # Select winding configuration with guidance
 % # Obtain necessary modifications to Ap/Kg
 % # Iterate over the previous seven steps until satisfied with delta
 % # Simulate (circuit and FEM), build, test, enjoy
@@ -84,7 +85,17 @@ J_MAX = 6.8e6; % From fit to data in Odendaal/Ferreira (1999)
 %%
 % *Structure Initializations*
 % 
-% The design documentation will describe the structures in detail.
+% Time contains all time vectors used, at each time resolution.
+% Converter contains information about the converter for which the transformer
+% was designed.
+% Transformer contains three substructures:
+% - core contains information about the core, including material, geometry, and
+%   some waveforms.
+% - winding contains information about the windings, including construction and
+%   geometry information, as well as all of the primary waveforms of converter
+%   operation.
+% - properties is a catch-all for transformer properties that do not
+%   specifically pertain to only the core or windings.
 
 Time = struct;
 Converter = struct;
